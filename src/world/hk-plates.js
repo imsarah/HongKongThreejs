@@ -39,7 +39,7 @@ function plateAtlas() {
 // planar UVs on every plate panel (material named 'plate') under root
 export function addPlateUvs(root) {
   root?.traverse((o) => {
-    if (!o.isMesh || o.material?.name !== 'plate' || o.geometry.attributes.uv?.userData?.hk) return;
+    if (!o.isMesh || o.material?.name !== 'plate' || o.geometry.userData.hkPlateUv) return;
     const g = o.geometry, p = g.attributes.position, n = g.attributes.normal;
     g.computeBoundingBox();
     const b = g.boundingBox, w = b.max.x - b.min.x || 1, h = b.max.y - b.min.y || 1;
@@ -51,9 +51,8 @@ export function addPlateUvs(root) {
       uv[i * 2] = u + (front ? 1 : 0);
       uv[i * 2 + 1] = (p.getY(i) - b.min.y) / h;
     }
-    const a = new THREE.BufferAttribute(uv, 2);
-    a.userData.hk = true;
-    g.setAttribute('uv', a);
+    g.setAttribute('uv', new THREE.BufferAttribute(uv, 2));
+    g.userData.hkPlateUv = true;
   });
 }
 

@@ -435,7 +435,7 @@ export async function createSky(renderer, scene, { requestShadow = () => { rende
   const fits = renderer.capabilities.maxTextureSize >= smW;
   sun.shadow.mapSize.set(fits ? smW : smW / 2, fits ? smH : smH / 2);
   sun.shadow.bias = -0.0003;
-  sun.shadow.normalBias = 0.035;
+  sun.shadow.normalBias = 0.06;   // (the box now reaches the tower tops: coarser texels)
   sun.shadow.radius = 1.5;
   scene.add(sun, sun.target);
   // bounce off the sunlit sand and street: lifts the backlit faces (seawall, path, the

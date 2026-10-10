@@ -57,19 +57,19 @@ function detect() {
 const TIERS = {
   high: {
     maxDpr: 1.5, maxPixels: 3.7e6, renderScale: 1, msaa: 4, fxaa: false, bloom: true,
-    shadowMap: [4096, 1024], shadowTaps: 5, shadowFilter: 'lite', cloudOctaves: 5,
+    shadowMap: [4096, 2048], shadowTaps: 5, shadowFilter: 'lite', cloudOctaves: 5,
     oceanGrid: { rings: 400, segs: 320 }, sandRows: 440, sandDetail: 1024, printFade: [35, 60],
     wrack: 9000, farFoliage: 1, signAtlas: 1, hotelFar: Infinity, shadowStep: 1, audioVoices: 'full',
   },
   medium: {
     maxDpr: 1.25, maxPixels: 1.3e6, renderScale: 1, msaa: 2, fxaa: false, bloom: true,
-    shadowMap: [4096, 1024], shadowTaps: 5, shadowFilter: 'lite', cloudOctaves: 4,
+    shadowMap: [4096, 2048], shadowTaps: 5, shadowFilter: 'lite', cloudOctaves: 4,
     oceanGrid: { rings: 300, segs: 256 }, sandRows: 360, sandDetail: 1024, printFade: [26, 45],
     wrack: 6000, farFoliage: 0.75, signAtlas: 1, hotelFar: Infinity, shadowStep: 1, audioVoices: 'full',
   },
   low: {
     maxDpr: 1, maxPixels: 0.8e6, renderScale: 0.85, msaa: 0, fxaa: true, bloom: false,
-    shadowMap: [2048, 1024], shadowTaps: 4, shadowFilter: 'lite', cloudOctaves: 3,
+    shadowMap: [2048, 2048], shadowTaps: 4, shadowFilter: 'lite', cloudOctaves: 3,
     oceanGrid: { rings: 220, segs: 176 }, sandRows: 260, sandDetail: 512, printFade: [16, 28],
     wrack: 3000, farFoliage: 0.5, signAtlas: 0.5, hotelFar: 560, shadowStep: 2.5, audioVoices: 'reduced',
   },
@@ -88,6 +88,6 @@ if (tier === 'high' && params.get('shot') !== '1' && d.strong && screenPx <= 2.3
 // ?ultra: the original 'high' look (8192 sun map, full contact-hardening filter), for
 // strong desktop GPUs; the pixel budget still applies
 if (tier === 'high' && params.has('ultra') && !params.has('lowshadow') && d.gpu.maxTex >= 8192) {
-  Object.assign(QUALITY, { shadowMap: [8192, 2048], shadowTaps: 8, shadowFilter: 'full' });
+  Object.assign(QUALITY, { shadowMap: [8192, 4096], shadowTaps: 8, shadowFilter: 'full' });
 }
 window.__quality = QUALITY;
