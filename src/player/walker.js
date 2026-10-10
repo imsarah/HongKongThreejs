@@ -1,11 +1,13 @@
-// First-person walker: pointer-lock mouse look (drag-to-look fallback), WASD with smooth
+// First- or third-person walker (V / C toggles: `third`, the camera behind the player's
+// body, player/avatar.js): pointer-lock mouse look (drag-to-look fallback), WASD with smooth
 // acceleration, ground following over curbs, sand, seawall steps and the lifeguard tower
 // stairs, circle-vs-box/circle collisions, head bob and sway synced to the step cycle,
 // Space to jump (collisions stay at ground level; soft landing dip).
 import * as THREE from 'three';
 import { EYE_HEIGHT, SEA_LEVEL } from '../world/layout.js';
 
-const WALK = 1.4, STROLL = 2.6;         // m/s
+const WALK = 1.4, RUN = 5.0;            // m/s: Shift held, or Caps Lock on, runs
+const TP = { dist: 3.4, height: 1.55, side: 0.45 };   // third-person camera: behind, up, over the right shoulder
 const RADIUS = 0.3;
 const STEP_UP = 0.46;                   // highest ledge that can be stepped onto
 const MAX_WADE = 0.5;                   // deepest water the walker goes into
@@ -48,6 +50,9 @@ export class Walker {
     this.vy = 0;
     this.jumpReq = false;
     this.dip = 0; this.dipV = 0;        // landing dip of the head (spring)
+    this.third = false;                 // third-person view
+    this.runLock = false;               // Caps Lock: always run
+    this.tpDist = TP.dist;              // current camera distance (pulled in by walls)
     camera.rotation.order = 'YXZ';
 
     document.addEventListener('pointerlockchange', () => {
@@ -71,6 +76,7 @@ export class Walker {
     });
     window.addEventListener('keydown', (e) => {
       this.keys.add(e.code);
+      this.runLock = !!e.getModifierState?.('CapsLock');
       if (e.code === 'Space') {
         if (!e.repeat && this.active) this.jumpReq = true;
         e.preventDefault();
@@ -151,14 +157,14 @@ export class Walker {
     const moving = this.active || this.virtualKeys;
     let f = moving ? (this.key('KeyW', 'ArrowUp') ? 1 : 0) - (this.key('KeyS', 'ArrowDown') ? 1 : 0) : 0;
     let r = moving ? (this.key('KeyD', 'ArrowRight') ? 1 : 0) - (this.key('KeyA', 'ArrowLeft') ? 1 : 0) : 0;
-    let speed = this.key('ShiftLeft', 'ShiftRight') ? STROLL : WALK;
+    let speed = this.key('ShiftLeft', 'ShiftRight') || this.runLock ? RUN : WALK;
     // analog stick (touch joystick): deflection sets the pace, a light run near full tilt
     const st = this.stick;
     if (moving && !f && !r && st) {
       const m = Math.min(1, Math.hypot(st.x, st.y));
       if (m > 0.08) {
         f = st.y; r = st.x;
-        speed = m > 0.85 ? STROLL : WALK * Math.max(0.3, m / 0.85);
+        speed = m > 0.85 ? RUN : WALK * Math.max(0.3, m / 0.85);
       }
     }
     const sy = Math.sin(this.yaw), cy = Math.cos(this.yaw);
@@ -218,7 +224,7 @@ export class Walker {
     this.dip += this.dipV * dt;
 
     // step cycle: stride from distance walked (no steps in the air)
-    const stride = v > 2.0 ? 0.95 : 0.75;
+    const stride = v > 3.5 ? 1.35 : v > 2.0 ? 0.95 : 0.75;
     const inAir = this.airY > 0;
     this.bobAmp += ((v > 0.2 && !inAir ? Math.min(1, v / WALK) : 0) - this.bobAmp) * (1 - Math.exp(-dt * 5));
     if (!inAir && v > 0.2) {
@@ -235,6 +241,7 @@ export class Walker {
   }
 
   apply() {
+    if (this.third) { this.applyThird(); return; }
     // head bob: lowest at each foot strike, small lateral sway and roll with the stride
     const b = this.bobAmp;
     const bob = -BOB * b * (1 - Math.abs(Math.sin(this.phase)));
@@ -242,6 +249,35 @@ export class Walker {
     const cy = Math.cos(this.yaw), sy = Math.sin(this.yaw);
     this.camera.position.set(this.pos.x + cy * sway, this.feetY + this.airY + EYE_HEIGHT + bob + this.dip, this.pos.y - sy * sway);
     this.camera.rotation.set(this.pitch + 0.004 * b * Math.sin(this.phase * 2), this.yaw, 0.0035 * b * Math.sin(this.phase * 0.5));
+  }
+
+  // third person: the camera orbits a point over the body's right shoulder, as far back as
+  // TP.dist allows before a wall or a building is in the way (eased back out)
+  applyThird(dt = 1 / 60) {
+    const cy = Math.cos(this.yaw), sy = Math.sin(this.yaw), cp = Math.cos(this.pitch), sp = Math.sin(this.pitch);
+    const tx = this.pos.x + cy * TP.side, tz = this.pos.y - sy * TP.side;
+    const ty = this.feetY + this.airY + TP.height;
+    // back along the view direction (forward is (-sin yaw cos pitch, sin pitch, -cos yaw cos pitch))
+    const bx = sy * cp, by = -sp, bz = cy * cp;
+    let d = TP.dist;
+    for (let s = 0.3; s <= TP.dist; s += 0.15) {
+      if (this.camBlocked(tx + bx * s, ty + by * s, tz + bz * s)) { d = Math.max(0.3, s - 0.25); break; }
+    }
+    this.tpDist = d < this.tpDist ? d : this.tpDist + (d - this.tpDist) * 0.08;
+    const k = this.tpDist;
+    let y = ty + by * k;
+    const g = this.world.heightAt(tx + bx * k, tz + bz * k, y);
+    y = Math.max(y, g + 0.3);
+    this.camera.position.set(tx + bx * k, y, tz + bz * k);
+    this.camera.rotation.set(this.pitch, this.yaw, 0);
+  }
+  camBlocked(x, y, z) {
+    const m = 0.2;
+    for (const q of this.world.boxes) {
+      if (q.disabled) continue;
+      if (x > q.min.x - m && x < q.max.x + m && z > q.min.z - m && z < q.max.z + m && y > q.min.y - m && y < q.max.y + m) return true;
+    }
+    return false;
   }
 
   // Move with sliding collisions (axis-separated, then push-out).

@@ -22,6 +22,7 @@ import { buildTraffic } from './world/traffic.js'; // TRAFFIC: cars cruising the
 import { createExitDrivers } from './world/exit-driver.js';
 import { createMinimap } from './ui/minimap.js';
 import { createRadioUi } from './ui/radio-ui.js';
+import { createAvatar } from './player/avatar.js'; // the player's body for the third-person view
 import { releaseGeometryAfterUpload, releaseCanvasesAfterUpload } from './renderer/memory.js';
 import { OPEN_WORLD } from './vehicles/specs.js';
 import { edgeDistance, softDistance, extentBounds, EDGE_SOFT } from './world/extent.js';
@@ -214,6 +215,15 @@ const vehicles = createVehicles(scene, {
 });
 walkWorld.circles.push(...vehicles.colliders);
 window.__vehicles = vehicles;
+// third person on foot: V / C (in a car they switch its camera instead), the touch camera button
+const avatar = peopleAssets && !SHOT ? createAvatar(scene, peopleAssets, controls) : null;
+const toggleThird = () => {
+  if (!avatar || vehicles.riding) return;
+  controls.third = avatar.enabled = !controls.third;
+  controls.apply();
+};
+addEventListener('keydown', (ev) => { if ((ev.code === 'KeyV' || ev.code === 'KeyC') && !ev.repeat && !SHOT) toggleThird(); });
+window.__avatar = avatar;
 // the art-deco minimap (N hides it, Shift+N north up): you and the saved car
 const _mmDir = new THREE.Vector3();
 const minimap = createMinimap({
@@ -284,10 +294,10 @@ function begin() {
 // TOUCH: joystick + drag-look, shown on coarse-pointer devices or after the first touch
 let touch = null;
 const howEl = overlay.querySelector('.how');
-if (OPEN_WORLD && howEl) howEl.innerHTML = '<b>Click to walk</b> — WASD to move, mouse to look, Space to jump, Shift to stroll faster, E to ride the bike or the ATV or get into any parked car (C camera, Space handbrake, H horn, R back to the road), M to mute';
+if (OPEN_WORLD && howEl) howEl.innerHTML = '<b>Click to walk</b> — WASD to move, mouse to look, Space to jump, Shift (or Caps Lock) to run, V for third person, E to ride the bike or the ATV or get into any parked car (C camera, Space handbrake, H horn, R back to the road), M to mute';
 function enableTouch() {
   if (touch || SHOT) return;
-  touch = createTouchControls(controls, { audio, onRide: () => vehicles.toggle(), onCamera: () => vehicles.toggleView(), onRadio: () => radioNext() });
+  touch = createTouchControls(controls, { audio, onRide: () => vehicles.toggle(), onCamera: () => (vehicles.riding ? vehicles.toggleView() : toggleThird()), onRadio: () => radioNext() });
   window.__touch = touch;
   if (howEl) howEl.innerHTML = OPEN_WORLD
     ? '<b>Tap to walk</b> — left thumb to move, drag to look, Ride by the bike or the ATV, Enter at any parked car’s door'
@@ -517,6 +527,7 @@ function frame(t) {
     if (!vehicles.riding) controls.update(dt);
     prof('walker');
     vehicles.update(dt);
+    avatar?.update(dt, { hidden: vehicles.riding });
     prof('vehicles');
   }
   if (!SHOT) {

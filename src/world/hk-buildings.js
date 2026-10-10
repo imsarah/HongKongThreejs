@@ -616,25 +616,13 @@ function buildOne(S, C, atlas) {
       }
     }
   }
-  // --- under the canopy: fluorescent tubes, and a small lightbox sign per shop sticking out
+  // --- under the canopy: fluorescent tubes
   {
-    const swW = s < 0 ? SIDEWALK_W.x1 - SIDEWALK_W.x0 : SIDEWALK_E.x1 - SIDEWALK_E.x0;
     const nTubes = Math.floor((z1 - z0) / 3);
     for (let i = 0; i < nTubes; i++) {
       const zc = z0 + (i + 0.5) * (z1 - z0) / nTubes;
       const [tx0, tx1] = X(0.5, 0.58);
       C.tubes.box(tx0, tx1, SHOP_H - 0.06, SHOP_H - 0.01, zc - 0.6, zc + 0.6, WHITE);
-    }
-    const nBox = Math.max(1, Math.round((z1 - z0) / 5));
-    for (let i = 0; i < nBox; i++) {
-      if (R() < 0.35) continue;
-      const zc = z0 + (i + 0.5) * (z1 - z0) / nBox + (R() - 0.5);
-      const out = Math.min(swW - 2.6, 0.9);
-      const [lx0, lx1] = X(0.15, 0.15 + out);
-      const slot = atlas.vert[Math.floor(R() * atlas.vert.length)];
-      // (a short vertical lightbox: the top of a vertical sign's slot)
-      const sl = [slot[0], slot[3] - (slot[3] - slot[1]) * 0.45, slot[2], slot[3]];
-      C.signs.box(lx0, lx1, 2.6, 3.9, zc - 0.1, zc + 0.1, WHITE, FAC0, { pz: { uv: sl }, nz: { uv: sl }, px: { uv: atlas.edge }, nx: { uv: atlas.edge }, py: { uv: atlas.edge }, ny: { uv: atlas.edge } });
     }
   }
 
