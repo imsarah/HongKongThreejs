@@ -1,18 +1,16 @@
-// Sunrise sky, sun light, image-based skylight and aerial perspective.
-// One analytic sky model (odSky*) is shared by the sky dome, the PMREM
-// environment, the water reflection and the fog chunk, so distant geometry
-// always dissolves into exactly the sky colour behind it.
+// Analytic sky and haze, with photographed urban environment lighting.
 import * as THREE from 'three';
 import { SUN, compassToDir } from './world/layout.js';
 import { QUALITY } from './quality.js';
+import { preloadEnvironment } from './textures/environment.js';
 
 export const sunDir = compassToDir(SUN.azimuthDeg, SUN.elevationDeg, new THREE.Vector3());
 
-// Linear-light values. ~15 minutes after sunrise (7 deg): ~2700-2900 K orange direct
-// light, dim and cool skylight (the sky itself is only a fraction as bright).
-export const SUN_COLOR = new THREE.Color().setRGB(1.0, 0.6, 0.4, THREE.LinearSRGBColorSpace);
+// Late-afternoon daylight at the city's 24-degree sun elevation. Warm sunlight and
+// cooler sky fill retain the colour of concrete instead of turning every lit wall pink.
+export const SUN_COLOR = new THREE.Color().setRGB(1.0, 0.78, 0.59, THREE.LinearSRGBColorSpace);
 export const SUN_INTENSITY = 5.1;
-export const ENV_INTENSITY = 1.45;
+export const ENV_INTENSITY = 1.6;
 export const FOG_DENSITY = 1 / 200; // per metre at sea level
 
 const v3 = (v) => `vec3(${v.x.toFixed(5)}, ${v.y.toFixed(5)}, ${v.z.toFixed(5)})`;
@@ -277,6 +275,50 @@ function makeSkyMaterial(mode) {
   });
 }
 
+function makeHdrSkyMaterial({ texture, source }, scale, mode) {
+  const measuredSun = new THREE.Vector3().fromArray(source.lighting.sunDirection);
+  // Dusk HDRIs contain bright lamps rather than a solar disc; retain their level horizon.
+  const yaw = source.lighting.hasDirectSun ? Math.atan2(measuredSun.z, measuredSun.x) - Math.atan2(sunDir.z, sunDir.x) : 0;
+  const rotation = new THREE.Matrix4().makeRotationY(yaw);
+  const alignedSun = measuredSun.clone().applyMatrix4(rotation);
+  const tilt = source.lighting.hasDirectSun ? new THREE.Quaternion().setFromUnitVectors(alignedSun, sunDir) : new THREE.Quaternion();
+  rotation.premultiply(new THREE.Matrix4().makeRotationFromQuaternion(tilt));
+  const worldToHDR = new THREE.Matrix3().setFromMatrix4(rotation).transpose();
+  return new THREE.ShaderMaterial({
+    name: mode === 1 ? 'SkyEnv' : 'Sky',
+    uniforms: { uHDR: { value: texture }, uWorldToHDR: { value: worldToHDR },
+      uScale: { value: scale }, uCore: { value: mode === 1 ? 0 : 1 } },
+    vertexShader: /* glsl */ `
+      varying vec3 vDir;
+      void main() {
+        vDir = position;
+        vec4 p = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+        gl_Position = p.xyww;
+      }`,
+    fragmentShader: /* glsl */ `
+      varying vec3 vDir;
+      uniform sampler2D uHDR;
+      uniform mat3 uWorldToHDR;
+      uniform float uScale;
+      uniform float uCore;
+      void main() {
+        vec3 worldDir = normalize(vDir);
+        vec3 d = uWorldToHDR * worldDir;
+        vec2 uv = vec2(atan(d.z, d.x) / 6.28318530718 + 0.5,
+                       asin(clamp(d.y, -1.0, 1.0)) / 3.14159265359 + 0.5);
+        vec3 radiance = texture2D(uHDR, uv).rgb * uScale;
+        // The directional light casts the sun's shadows. Remove its tiny core from
+        // diffuse lighting and car captures to avoid a second, unshadowed sun.
+        float solar = smoothstep(cos(0.025), cos(0.012), dot(worldDir, ${v3(sunDir)}));
+        float luma = dot(radiance, vec3(0.2126, 0.7152, 0.0722));
+        vec3 softSun = radiance * min(1.0, 3.0 / max(luma, 1e-4));
+        ${source.lighting.hasDirectSun ? 'radiance = mix(radiance, softSun, solar * (1.0 - uCore));' : ''}
+        gl_FragColor = vec4(radiance, 1.0);
+      }`,
+    side: THREE.BackSide, depthWrite: false, fog: false,
+  });
+}
+
 // Replace three's fog with height-attenuated, view-direction-tinted haze.
 function installAerialPerspective() {
   THREE.ShaderChunk.fog_pars_vertex = /* glsl */ `
@@ -382,9 +424,8 @@ function installSmoothShadows(shadowCam, mapSize) {
 				if ( bSum < 0.001 ) {
 					shadow = 1.0;
 				} else {
-					// the sun's disc gives 0.0093 x blocker distance; kept tighter so long trunk bars
-					// and fringed crowns stay readable far from their casters
-					float pen = max( 0.0016 * dSum / bSum, minM );
+					// The sun's angular radius: contact stays sharp, distant blockers soften.
+					float pen = max( 0.00465 * dSum / bSum, minM );
 					vec2 rT = clamp( pen / odTexM, vec2( 1.0 ), vec2( 6.0 ) );
 					vec2 stp = rT * texelSize / ${f(tapC)};
 					shadow = 0.0;
@@ -400,6 +441,8 @@ function installSmoothShadows(shadowCam, mapSize) {
 }
 
 export async function createSky(renderer, scene, { requestShadow = () => { renderer.shadowMap.needsUpdate = true; } } = {}) {
+  const environment = await preloadEnvironment();
+  const skyScale = environment ? 0.65 / environment.source.lighting.skyLuminance : 1;
   installAerialPerspective();
   installGroundBounce();
   scene.fog = new THREE.FogExp2(0xffffff, FOG_DENSITY);
@@ -410,7 +453,9 @@ export async function createSky(renderer, scene, { requestShadow = () => { rende
   scene.add(dome);
 
   const envScene = new THREE.Scene();
-  envScene.add(new THREE.Mesh(new THREE.SphereGeometry(100, 64, 32), makeSkyMaterial(1)));
+  const envDome = new THREE.Mesh(new THREE.SphereGeometry(100, 64, 32),
+    environment ? makeHdrSkyMaterial(environment, skyScale, 1) : makeSkyMaterial(1));
+  envScene.add(envDome);
   // build the sky shader for PMREM's linear half-float cube target in the background first:
   // compiled inside fromScene it blocks the page for about a second
   {
@@ -423,10 +468,21 @@ export async function createSky(renderer, scene, { requestShadow = () => { rende
     rt.dispose();
   }
   const pmrem = new THREE.PMREMGenerator(renderer);
-  const envRT = pmrem.fromScene(envScene, 0, 0.1, 500);
+  const envRT = pmrem.fromScene(envScene, 0, 0.1, 500, { size: QUALITY.tier === 'high' ? 512 : QUALITY.tier === 'medium' ? 256 : 128 });
   pmrem.dispose();
+  envDome.geometry.dispose();
+  envDome.material.dispose();
+  if (environment) {
+    // Only the filtered lighting map is needed once the environment has been captured.
+    environment.texture.dispose();
+    environment.texture.image.data = null;
+  }
+  envRT.texture.name = environment ? 'ModernEveningStreet/filtered-environment' : 'Procedural/filtered-sky';
+  envRT.texture.userData.size = [envRT.width, envRT.height];
   scene.environment = envRT.texture;
-  scene.environmentIntensity = ENV_INTENSITY;
+  scene.environmentIntensity = environment ? 1.2 : ENV_INTENSITY;
+  scene.userData.environment = environment ? { asset: environment.source.id, texture: environment.texture.name,
+    skyScale, hdrWeight: 1, visibleSky: 'procedural' } : { asset: 'procedural' };
 
   const sun = new THREE.DirectionalLight(SUN_COLOR, SUN_INTENSITY);
   sun.castShadow = true;
@@ -487,6 +543,7 @@ export async function createSky(renderer, scene, { requestShadow = () => { rende
   return {
     dome,
     sun,
+    textures: [envRT.texture],
     // one step lighter sun shadows (GPU guard): half the map, half as many re-renders.
     // Returns false at the floor.
     lowerShadow() {

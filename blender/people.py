@@ -27,6 +27,10 @@ CHARS = {
     'remy': (1.78, 0.8, 6500),   # (converted, not used in game: legacy rig, blank face texture)
     'bryce': (None, 0.62, 6500),
     'lewis': (None, 0.58, 6500),
+    'josh': (None, 0.62, 6500),
+    'shannon': (None, 0.62, 6500),
+    'suzie': (None, 0.62, 6500),
+    'martha': (None, 0.62, 6500),
 }
 CLIPS = [
     'walk_casual_m', 'walk_casual_f', 'walk_feminine_f', 'walk_happy_m', 'walk_holding_object', 'walk_shopping_bag_m',
@@ -60,7 +64,7 @@ def zone_of(name):
     n = name.lower()
     if 'hair' in n:
         return 4
-    if 'shirt' in n or 'top' in n:
+    if any(part in n for part in ('shirt', 'top', 'suit', 'jacket', 'coat', 'blouse', 'sweater')):
         return 1
     if 'pants' in n or 'shorts' in n or 'bottom' in n:
         return 2
@@ -162,7 +166,13 @@ def join(objs, name):
 def build_char(name, spec):
     target_h, r0, t1 = spec
     clean()
-    arm = import_fbx(os.path.join(SRC, name, name + '_tpose.fbx'))
+    fbx = os.path.join(SRC, name, name + '_tpose.fbx')
+    if os.path.isfile(fbx):
+        arm = import_fbx(fbx)
+    else:
+        source = os.path.join(ROOT, '.perf', 'mixamo', name, name + '.glb')
+        bpy.ops.import_scene.gltf(filepath=source, bone_heuristic='BLENDER')
+        arm = next(o for o in bpy.context.scene.objects if o.type == 'ARMATURE')
     arm.animation_data_clear()
     bpy.context.view_layer.update()
     meshes = [o for o in bpy.context.scene.objects if o.type == 'MESH']

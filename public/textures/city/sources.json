@@ -1,0 +1,218 @@
+{
+  "license": "CC0-1.0",
+  "licenseUrl": "https://polyhaven.com/license",
+  "assets": [
+    {
+      "id": "asphalt_02",
+      "meters": 3,
+      "name": "Asphalt 02",
+      "authors": [
+        "Rob Tuytel"
+      ],
+      "source": "https://polyhaven.com/a/asphalt_02",
+      "maps": {
+        "color": {
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/asphalt_02/asphalt_02_diff_1k.jpg",
+          "md5": "fa19772d4817754c3efab708c651f5a8",
+          "tiers": {
+            "512": {
+              "file": "asphalt_02_color_512.webp",
+              "bytes": 112048
+            },
+            "1024": {
+              "file": "asphalt_02_color_1024.webp",
+              "bytes": 491672
+            }
+          }
+        },
+        "normal": {
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/asphalt_02/asphalt_02_nor_gl_1k.jpg",
+          "md5": "338da8de636ea36133170578cac82e8e",
+          "tiers": {
+            "512": {
+              "file": "asphalt_02_normal_512.webp",
+              "bytes": 155182
+            },
+            "1024": {
+              "file": "asphalt_02_normal_1024.webp",
+              "bytes": 684284
+            }
+          }
+        },
+        "arm": {
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/asphalt_02/asphalt_02_arm_1k.jpg",
+          "md5": "33820445f43af5e5ee484674b6939271",
+          "tiers": {
+            "512": {
+              "file": "asphalt_02_arm_512.webp",
+              "bytes": 152900
+            },
+            "1024": {
+              "file": "asphalt_02_arm_1024.webp",
+              "bytes": 551468
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "concrete_pavement",
+      "meters": 1.8,
+      "name": "Concrete Pavement",
+      "authors": [
+        "Charlotte Baglioni"
+      ],
+      "source": "https://polyhaven.com/a/concrete_pavement",
+      "maps": {
+        "color": {
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/concrete_pavement/concrete_pavement_diff_1k.jpg",
+          "md5": "b7a0d071a3406d55a1c3e9a73a06df03",
+          "tiers": {
+            "512": {
+              "file": "concrete_pavement_color_512.webp",
+              "bytes": 81856
+            },
+            "1024": {
+              "file": "concrete_pavement_color_1024.webp",
+              "bytes": 358212
+            }
+          }
+        },
+        "normal": {
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/concrete_pavement/concrete_pavement_nor_gl_1k.jpg",
+          "md5": "025a1d4e910cf3e5b3d63ada43a791d8",
+          "tiers": {
+            "512": {
+              "file": "concrete_pavement_normal_512.webp",
+              "bytes": 144952
+            },
+            "1024": {
+              "file": "concrete_pavement_normal_1024.webp",
+              "bytes": 697006
+            }
+          }
+        },
+        "arm": {
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/concrete_pavement/concrete_pavement_arm_1k.jpg",
+          "md5": "92d5d1f6449deacd7dbd13d1dff26741",
+          "tiers": {
+            "512": {
+              "file": "concrete_pavement_arm_512.webp",
+              "bytes": 96488
+            },
+            "1024": {
+              "file": "concrete_pavement_arm_1024.webp",
+              "bytes": 433122
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "herringbone_brick_03",
+      "meters": 2,
+      "name": "Herringbone Brick 03",
+      "authors": [
+        "Charlotte Baglioni"
+      ],
+      "source": "https://polyhaven.com/a/herringbone_brick_03",
+      "maps": {
+        "color": {
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/herringbone_brick_03/herringbone_brick_03_diff_1k.jpg",
+          "md5": "0191e9f5e3388633978421f20a44d83f",
+          "tiers": {
+            "512": {
+              "file": "herringbone_brick_03_color_512.webp",
+              "bytes": 64312
+            },
+            "1024": {
+              "file": "herringbone_brick_03_color_1024.webp",
+              "bytes": 355672
+            }
+          }
+        },
+        "normal": {
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/herringbone_brick_03/herringbone_brick_03_nor_gl_1k.jpg",
+          "md5": "8a4813916a4dbc5ec2144f5e70a21946",
+          "tiers": {
+            "512": {
+              "file": "herringbone_brick_03_normal_512.webp",
+              "bytes": 113278
+            },
+            "1024": {
+              "file": "herringbone_brick_03_normal_1024.webp",
+              "bytes": 574410
+            }
+          }
+        },
+        "arm": {
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/herringbone_brick_03/herringbone_brick_03_arm_1k.jpg",
+          "md5": "bb93f67d2e9199f1f986d03dd45368c5",
+          "tiers": {
+            "512": {
+              "file": "herringbone_brick_03_arm_512.webp",
+              "bytes": 90878
+            },
+            "1024": {
+              "file": "herringbone_brick_03_arm_1024.webp",
+              "bytes": 400188
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "painted_plaster_wall",
+      "meters": 2,
+      "name": "Painted Plaster Wall",
+      "authors": [
+        "Amal Kumar"
+      ],
+      "source": "https://polyhaven.com/a/painted_plaster_wall",
+      "maps": {
+        "color": {
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/painted_plaster_wall/painted_plaster_wall_diff_1k.jpg",
+          "md5": "15ba8c1f63a5ab412b1eabe31728540a",
+          "tiers": {
+            "512": {
+              "file": "painted_plaster_wall_color_512.webp",
+              "bytes": 38992
+            },
+            "1024": {
+              "file": "painted_plaster_wall_color_1024.webp",
+              "bytes": 251290
+            }
+          }
+        },
+        "normal": {
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/painted_plaster_wall/painted_plaster_wall_nor_gl_1k.jpg",
+          "md5": "43fff290583dbdfc9bfa088a2750e840",
+          "tiers": {
+            "512": {
+              "file": "painted_plaster_wall_normal_512.webp",
+              "bytes": 100894
+            },
+            "1024": {
+              "file": "painted_plaster_wall_normal_1024.webp",
+              "bytes": 514782
+            }
+          }
+        },
+        "arm": {
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/painted_plaster_wall/painted_plaster_wall_arm_1k.jpg",
+          "md5": "a4c1ff7470669daec9e274d915471246",
+          "tiers": {
+            "512": {
+              "file": "painted_plaster_wall_arm_512.webp",
+              "bytes": 32780
+            },
+            "1024": {
+              "file": "painted_plaster_wall_arm_1024.webp",
+              "bytes": 181312
+            }
+          }
+        }
+      }
+    }
+  ]
+}

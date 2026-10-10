@@ -24,7 +24,7 @@ import { STREET_COLLIDERS, BENCHES } from './street.js';
 import { PALM_TREES } from './palms.js';
 import { QUALITY } from '../quality.js';
 import { hotelLane } from './lanes.js';
-import { createPerson, attachSkates, bakeSkateClip, SKATE_LIFT, ik2, measureGrip, gripHand, setWorldQuat } from './mixamo.js';
+import { createPerson, playerCharacter, attachSkates, bakeSkateClip, SKATE_LIFT, ik2, measureGrip, gripHand, setWorldQuat } from './mixamo.js';
 
 const TAU = Math.PI * 2;
 const TIER = QUALITY.tier;
@@ -158,10 +158,10 @@ function castList(benches, chairs, furniture) {
   const parkWalk = (z0, z1) => makePath(sampled(z0, z1, () => -12.1, 2), { half: 0.8 });
   // Causeway Bay: both sidewalks busy all along, people at every pace
   const W = [
-    ['megan', 'walk_casual_f', 1.25], ['bryce', 'walk_happy_m', 1.35], ['elizabeth', 'walk_texting_f', 1.05],
-    ['lewis', 'walk_holding_object', 1.2], ['sophie', 'walk_feminine_f', 1.2], ['bryce', 'walk_casual_m', 1.3],
-    ['elizabeth', 'walk_briefcase_f', 1.4], ['lewis', 'walk_shopping_bag_m', 1.3], ['megan', 'walk_casual_f', 1.15],
-    ['sophie', 'walk_casual_f', 1.3],
+    ['suzie', 'walk_casual_f', 1.25], ['josh', 'walk_happy_m', 1.35], ['martha', 'walk_texting_f', 1.05],
+    ['shannon', 'walk_holding_object', 1.2], ['martha', 'walk_feminine_f', 1.2], ['josh', 'walk_casual_m', 1.3],
+    ['suzie', 'walk_briefcase_f', 1.4], ['shannon', 'walk_shopping_bag_m', 1.3], ['megan', 'walk_casual_f', 1.15],
+    ['elizabeth', 'walk_casual_f', 1.3],
   ];
   W.forEach(([char, clip, v], i) => {
     const tier = i < 4 ? 1 : i < 7 ? 2 : 3;
@@ -169,11 +169,11 @@ function castList(benches, chairs, furniture) {
     P.push({ tier, kind: 'walk', char, clip, path: i % 2 ? parkWalk(z0, z1) : hotelWalk(z0, z1), s: 15 + i * 31, dir: i % 3 ? 1 : -1, v });
   });
   // someone in a hurry on each side
-  P.push({ tier: 2, kind: 'jog', char: 'lewis', clip: 'jog', path: parkWalk(-200, 200), s: 230, dir: -1, v: 2.6 });
-  P.push({ tier: 3, kind: 'jog', char: 'sophie', clip: 'run_f', path: parkWalk(-180, 180), s: 60, dir: 1, v: 2.5 });
+  P.push({ tier: 2, kind: 'jog', char: 'shannon', clip: 'jog', path: parkWalk(-200, 200), s: 230, dir: -1, v: 2.6 });
+  P.push({ tier: 3, kind: 'jog', char: 'suzie', clip: 'run_f', path: parkWalk(-180, 180), s: 60, dir: 1, v: 2.5 });
   // benches near the start (sitting clips), cafe tables (a pair talking, one drinking)
   const bs = benches.filter((b) => b.z > -60 && b.z < 70 && b.x < -10.5).sort((a, b) => Math.abs(a.z - 20) - Math.abs(b.z - 20));
-  const sits = [['sophie', 'sit_idle_f', 1], ['bryce', 'sit_drinking', 1], ['lewis', 'sit_looking_around', 2], ['elizabeth', 'sit_fidget_feet', 3]];
+  const sits = [['martha', 'sit_idle_f', 1], ['josh', 'sit_drinking', 1], ['shannon', 'sit_looking_around', 2], ['elizabeth', 'sit_fidget_feet', 3]];
   sits.forEach(([char, clip, tier], i) => { if (bs[i]) P.push({ tier, kind: 'sit', char, clip, seat: { x: bs[i].x + 0.03, y: bs[i].seatY, z: bs[i].z + (i % 2 ? 0.35 : -0.3), yaw: Math.PI / 2 + bs[i].rot, bench: true } }); });
   // cafe: chairs on the terraces within the first blocks, two at one table facing each other
   const cs = chairs.filter((c) => Math.abs(c.z) < 60 && c.x > HOTEL.frontX - 0.5).sort((a, b) => Math.abs(a.z - 14) - Math.abs(b.z - 14));
@@ -183,27 +183,27 @@ function castList(benches, chairs, furniture) {
     if (o) { pair.push(c, o); break; }
   }
   if (pair.length) {
-    P.push({ tier: 1, kind: 'sit', char: 'megan', clip: 'sit_talking_2', seat: { x: pair[0].x, y: pair[0].y + 0.45, z: pair[0].z, yaw: pair[0].rot, cafe: true } });
-    P.push({ tier: 2, kind: 'sit', char: 'bryce', clip: 'sit_talking', seat: { x: pair[1].x, y: pair[1].y + 0.45, z: pair[1].z, yaw: pair[1].rot, cafe: true } });
+    P.push({ tier: 1, kind: 'sit', char: 'suzie', clip: 'sit_talking_2', seat: { x: pair[0].x, y: pair[0].y + 0.45, z: pair[0].z, yaw: pair[0].rot, cafe: true } });
+    P.push({ tier: 2, kind: 'sit', char: 'josh', clip: 'sit_talking', seat: { x: pair[1].x, y: pair[1].y + 0.45, z: pair[1].z, yaw: pair[1].rot, cafe: true } });
   }
   const lone = cs.find((c) => !pair.includes(c) && Math.abs(c.z - (pair[0]?.z ?? 0)) > 8);
-  if (lone) P.push({ tier: 3, kind: 'sit', char: 'lewis', clip: 'sit_drinking', seat: { x: lone.x, y: lone.y + 0.45, z: lone.z, yaw: lone.rot, cafe: true } });
+  if (lone) P.push({ tier: 3, kind: 'sit', char: 'shannon', clip: 'sit_drinking', seat: { x: lone.x, y: lone.y + 0.45, z: lone.z, yaw: lone.rot, cafe: true } });
   laneObs = [...furniture, ...P.filter((c) => c.seat?.cafe).map(({ seat: t }) => ({ x: t.x + Math.sin(t.yaw) * 0.15, z: t.z + Math.cos(t.yaw) * 0.15, r: 0.34 }))];
-  P.push({ tier: 1, kind: 'walk', char: 'bryce', clip: 'walk_casual_m', path: hotelWalk(-150, 150), s: 180, dir: -1, v: 1.3 });
-  P.push({ tier: 2, kind: 'walk', char: 'elizabeth', clip: 'walk_briefcase_f', path: hotelWalk(-120, 70), s: 120, dir: 1, v: 1.4 });
-  P.push({ tier: 3, kind: 'walk', char: 'lewis', clip: 'walk_shopping_bag_m', path: parkWalk(-150, 150), s: 100, dir: 1, v: 1.3 });
+  P.push({ tier: 1, kind: 'walk', char: 'josh', clip: 'walk_casual_m', path: hotelWalk(-150, 150), s: 180, dir: -1, v: 1.3 });
+  P.push({ tier: 2, kind: 'walk', char: 'martha', clip: 'walk_briefcase_f', path: hotelWalk(-120, 70), s: 120, dir: 1, v: 1.4 });
+  P.push({ tier: 3, kind: 'walk', char: 'shannon', clip: 'walk_shopping_bag_m', path: parkWalk(-150, 150), s: 100, dir: 1, v: 1.3 });
   // crosser: hotel sidewalk south to the mid-block crosswalk, over, north up the park side,
   // back over at the 10 ST south leg
   {
     const zc = CROSSWALK_Z, leg = crossLegs(CROSS_STREETS.find((c) => c.name === 'PAK SHA ROAD').z)[1], z10 = (leg[0] + leg[1]) / 2;
     const xh = -26.4, xp = -12.3;
     const pts = [...hotelLane(z10, zc, laneObs), ...sampled(z10, zc, () => xp, 2).reverse()];
-    P.push({ tier: 1, kind: 'walk', char: 'sophie', clip: 'walk_casual_f', path: makePath(pts, { closed: true, half: 0.7, cross: true }), s: 20, dir: 1, v: 1.3, crosser: true });
+    P.push({ tier: 1, kind: 'walk', char: 'suzie', clip: 'walk_casual_f', path: makePath(pts, { closed: true, half: 0.7, cross: true }), s: 20, dir: 1, v: 1.3, crosser: true });
   }
   // standing about: a phone call outside a shop, someone looking round at the signs
-  P.push({ tier: 2, kind: 'stand', char: 'elizabeth', clip: 'idle_phone_talk_f', at: { x: -10.9, z: -28, yaw: -1.6 } });
-  P.push({ tier: 3, kind: 'stand', char: 'bryce', clip: 'idle_looking_around', at: { x: -12.6, z: 58, yaw: -2.2 } });
-  P.push({ tier: 1, kind: 'stand', char: 'sophie', clip: 'idle_phone_talk_f', at: { x: -29.2, z: 18, yaw: 1.5 } });
+  P.push({ tier: 2, kind: 'stand', char: 'martha', clip: 'idle_phone_talk_f', at: { x: -10.9, z: -28, yaw: -1.6 } });
+  P.push({ tier: 3, kind: 'stand', char: 'josh', clip: 'idle_looking_around', at: { x: -12.6, z: 58, yaw: -2.2 } });
+  P.push({ tier: 1, kind: 'stand', char: 'suzie', clip: 'idle_phone_talk_f', at: { x: -29.2, z: 18, yaw: 1.5 } });
   return P;
 }
 
@@ -708,7 +708,8 @@ export function buildCrowd(scene, assets, { beach, hotels, walker = null, getCar
   // Drivers: a Mixamo body seated in each traffic car (the Driving clip, hands IK'd to the
   // rim grips) and the player's own body in the convertible (head and hair hidden from the
   // first-person camera; hands on the wheel as it turns)
-  const driverChars = Object.keys(chars);
+  const driverChars = ['josh', 'shannon', 'suzie', 'martha', 'bryce', 'elizabeth'].filter(name => chars[name]);
+  if (!driverChars.length) driverChars.push(...Object.keys(chars));
   let driverN = 0, lastCam = null, playerDriver = null;
   const drivers = [];
   function seatBody(P, anchor, fwd = 0) {
@@ -933,7 +934,7 @@ export function buildCrowd(scene, assets, { beach, hotels, walker = null, getCar
     // the player at the convertible's wheel
     if (cars?.drive?.attachDriver && !shot) {
       // (jeans and sneakers in the footwell, a plain tee: bare forearms on the wheel, no tattoos)
-      const name = chars.megan ? 'megan' : driverChars[0];
+      const name = playerCharacter(chars);
       const P = createPerson(chars[name], { tints: [lin(0xb9d3e3, 0.85), null, null], shadow: false });
       P.setLevel(0);
       P.root.name = 'player-driver';
@@ -968,7 +969,7 @@ export function buildCrowd(scene, assets, { beach, hotels, walker = null, getCar
   function seatPlayer(view) {
     if (!driverChars.length || !view?.attachDriver) return () => {};
     if (!modernDriver) {
-      const name = chars.megan ? 'megan' : driverChars[0];
+      const name = playerCharacter(chars);
       const P = createPerson(chars[name], { tints: [lin(0xb9d3e3, 0.85), null, null], shadow: false });
       P.setLevel(0);
       P.root.name = 'player-driver-modern';
@@ -996,6 +997,7 @@ export function buildCrowd(scene, assets, { beach, hotels, walker = null, getCar
     agents: agents.length, visible: agents.filter((a) => a.visible && !a.hidden).length,
     lod0: agents.filter((a) => a.visible && !a.hidden && a.P.level === 0).length,
     kinds: agents.reduce((o, a) => ((o[a.kind] = (o[a.kind] ?? 0) + 1), o), {}),
+    characters: agents.reduce((o, a) => ((o[a.P.asset.name] = (o[a.P.asset.name] ?? 0) + 1), o), {}),
   });
   return {
     agents, colliders, tris, debug, drivers,

@@ -12,6 +12,7 @@ import { PALM_TREES } from './palms.js';
 import { OPEN_WORLD } from '../vehicles/specs.js';
 import { mulberry32, fbmField } from '../textures/noise.js';
 import { registerLod } from './lod.js';
+import { cityTextureSet } from '../textures/city.js';
 
 const Z = WORLD_Z;
 const CURB_W = 0.15;
@@ -168,7 +169,15 @@ function asphaltTextures() {
 }
 
 function roadMesh() {
-  const { map, normalMap, macro } = asphaltTextures();
+  const procedural = asphaltTextures();
+  const scan = cityTextureSet('asphalt_02');
+  const { macro } = procedural;
+  const map = scan?.color ?? procedural.map, normalMap = scan?.normal ?? procedural.normalMap;
+  if (scan) {
+    // Existing road UVs cover 8 m; the photographed tile covers 3 m.
+    for (const texture of [scan.color, scan.normal, scan.arm]) texture.repeat.setScalar(8 / 3);
+    procedural.map.dispose(); procedural.normalMap.dispose();
+  }
   const nx = 38;
   const pos = [], uv = [], idx = [];
   // (rows along z, 10 m apart near the district, 100 m beyond: one 5 km triangle per strip
@@ -189,7 +198,8 @@ function roadMesh() {
   g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
   g.setIndex(idx);
   g.computeVertexNormals();
-  const mat = new THREE.MeshStandardMaterial({ map, normalMap, normalScale: new THREE.Vector2(0.6, 0.6), roughness: 0.9 });
+  const mat = new THREE.MeshStandardMaterial({ map, normalMap, normalScale: new THREE.Vector2(scan ? 0.45 : 0.6, scan ? 0.45 : 0.6), roughness: scan ? 1 : 0.9,
+    ...(scan ? { roughnessMap: scan.arm, aoMap: scan.arm, aoMapIntensity: 0.45 } : {}) });
   const tracks = LANE_C.flatMap((c) => [c - 0.85, c + 0.85]).map((v) => v.toFixed(2));
   mat.onBeforeCompile = (s) => {
     s.uniforms.odMacro = { value: macro };
@@ -216,7 +226,7 @@ function roadMesh() {
         odSeam = min(odSeam, 1.0);
         diffuseColor.rgb *= (0.7 + 0.6 * odM.r) * (1.0 - 0.14 * odTr) * (1.0 - 0.62 * odOil) * (1.0 - 0.1 * odGut) * (1.0 - 0.45 * odDirt) * (1.0 - 0.5 * odSeam);`)
       .replace('#include <roughnessmap_fragment>', `#include <roughnessmap_fragment>
-        roughnessFactor = clamp(0.93 + (odM.g - 0.5) * 0.6 - 0.18 * odTr - 0.5 * odOil - 0.6 * odSeam, 0.25, 1.0);`)
+        roughnessFactor = clamp(roughnessFactor + (odM.g - 0.5) * 0.35 - 0.18 * odTr - 0.5 * odOil - 0.6 * odSeam, 0.25, 1.0);`)
       .replace('#include <aomap_fragment>', `#include <aomap_fragment>
         #ifdef USE_FOG
         {
@@ -224,14 +234,14 @@ function roadMesh() {
           // road is brighter than Lambert and the shadows on it read crisp and contrasty
           vec3 odVd = normalize(vFogOffset);
           float odAway = smoothstep(0.2, -1.0, dot(normalize(odVd.xz + 1e-5), normalize(OD_SUN.xz))) * (1.0 - abs(odVd.y));
-          reflectedLight.directDiffuse *= 2.4 + 0.8 * odAway;
+          reflectedLight.directDiffuse *= 1.35 + 0.3 * odAway;
           // neutral grey skylight fill (the lilac sky on warm-lit grey read mauve)
           vec3 odI = reflectedLight.indirectDiffuse;
           reflectedLight.indirectDiffuse = mix(odI, vec3(dot(odI, vec3(0.2126, 0.7152, 0.0722))) * vec3(0.97, 0.98, 1.0), 0.6) * 0.72;
         }
         #endif`);
   };
-  mat.customProgramCacheKey = () => 'street-asphalt-v2';
+  mat.customProgramCacheKey = () => 'street-asphalt-v4';
   const m = new THREE.Mesh(g, mat);
   m.receiveShadow = true;
   return m;
@@ -546,6 +556,10 @@ function planarUV(g, tile) {
 
 function sidewalks() {
   const { concrete, pavers } = concreteTextures();
+  const scan = cityTextureSet('herringbone_brick_03');
+  // Geometry UVs span 3 m; the scanned herringbone tile spans 2 m.
+  if (scan) for (const texture of [scan.color, scan.normal, scan.arm]) texture.repeat.setScalar(3 / 2);
+  else pavers.repeat.setScalar(3 / 1.2);
   const H = CURB_HEIGHT;
   const wx = SIDEWALK_W.x1 - CURB_W, ex = SIDEWALK_E.x0 + CURB_W;
   const rampExcl = RAMPS.map((r) => [r.z0, r.z1]);
@@ -585,34 +599,22 @@ function sidewalks() {
   }
   }
   for (let i = 0; i < parts.length; i++) if (parts[i].index) parts[i] = parts[i].toNonIndexed();
-  const mat = new THREE.MeshStandardMaterial({ map: concrete, roughness: 0.88 });
+  const mat = new THREE.MeshStandardMaterial({ map: scan?.color ?? pavers, roughness: scan ? 1 : 0.9,
+    ...(scan ? { normalMap: scan.normal, normalScale: new THREE.Vector2(0.5, 0.5), roughnessMap: scan.arm, aoMap: scan.arm, aoMapIntensity: 0.5 } : {}) });
+  mat.name = 'herringbone-sidewalk';
   mat.onBeforeCompile = (s) => {
-    s.uniforms.odPavers = { value: pavers };
-    s.vertexShader = s.vertexShader
-      .replace('#include <common>', '#include <common>\nvarying vec3 vOdW;')
-      .replace('#include <project_vertex>', '#include <project_vertex>\nvOdW = (modelMatrix * vec4(transformed, 1.0)).xyz;');
     s.fragmentShader = s.fragmentShader
-      .replace('#include <common>', '#include <common>\nvarying vec3 vOdW;\nuniform sampler2D odPavers;')
-      .replace('#include <map_fragment>', `#include <map_fragment>
-        {
-          // brick-paver bands in front of some hotels
-          float zi = floor((vOdW.z + 7.0) / 23.0);
-          float on = step(0.45, fract(sin(zi * 12.9898) * 43758.5453)) * step(vOdW.x, -27.4) * step(-31.0, vOdW.x) * step(${(CURB_HEIGHT - 0.01).toFixed(3)}, vOdW.y);
-          vec4 pv = texture2D(odPavers, vOdW.xz / 1.2);
-          float edge = step(abs(vOdW.x + 27.4), 0.08);
-          diffuseColor.rgb = mix(diffuseColor.rgb, mix(pv.rgb, vec3(0.55, 0.5, 0.45), edge), on);
-        }`)
       .replace('#include <aomap_fragment>', `#include <aomap_fragment>
         #ifdef USE_FOG
         { vec3 odVd = normalize(vFogOffset);
           float odAway = smoothstep(0.2, -1.0, dot(normalize(odVd.xz + 1e-5), normalize(OD_SUN.xz))) * (1.0 - abs(odVd.y));
-          // rough concrete under a grazing sun: stronger back-scatter, crisp shadow bands
-          reflectedLight.directDiffuse *= 2.2 + 0.6 * odAway;
+          // Rough paving under a grazing sun: stronger back-scatter, crisp shadow bands.
+          reflectedLight.directDiffuse *= 1.35 + 0.3 * odAway;
           vec3 odI = reflectedLight.indirectDiffuse;
           reflectedLight.indirectDiffuse = mix(odI, vec3(dot(odI, vec3(0.2126, 0.7152, 0.0722))), 0.2) * 0.8; }
         #endif`);
   };
-  mat.customProgramCacheKey = () => 'street-sidewalk-v2';
+  mat.customProgramCacheKey = () => 'street-sidewalk-v4';
   const m = new THREE.Mesh(mergeGeometries(parts), mat);
   m.receiveShadow = true;
 

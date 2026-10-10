@@ -25,11 +25,17 @@ import { HOTEL } from './layout.js';
 // (Remy is converted too but not used: his legacy rig's head and neck don't retarget cleanly
 // and his face texture is blank)
 export const CHARACTERS = {
+  suzie: { fem: true }, martha: { fem: true },
+  josh: { fem: false }, shannon: { fem: false },
   sophie: { fem: true }, elizabeth: { fem: true }, megan: { fem: true },
   bryce: { fem: false }, lewis: { fem: false },
 };
-const LOW_SET = ['sophie', 'megan', 'bryce', 'lewis'];
+const LOW_SET = ['suzie', 'martha', 'josh', 'shannon'];
 const TEX = QUALITY.tier === 'high' ? '' : '-512';
+
+export function playerCharacter(chars) {
+  return chars.suzie ? 'suzie' : chars.megan ? 'megan' : Object.keys(chars)[0];
+}
 
 let pending = null;
 // start the downloads early (main.js calls this before the world build)
