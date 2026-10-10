@@ -275,13 +275,22 @@ function facadeMaterial() {
               : vec4(0.04, 0.96, 0.06, 0.94);
             float pier = st > 0.5 && st < 1.5 ? step(mod(bi + floor(sd * 3.0), 4.0), 0.5) : 0.0;
             float inWin = step(wr.x, bx) * step(bx, wr.y) * step(wr.z, f) * step(f, wr.w) * (1.0 - pier);
+            // parallax reveal: the frame and glass sit rz back in the wall. Where the view ray
+            // meets that plane is where frame / glass / room are looked up (bg, fg); a ray that
+            // meets it outside the opening sees the reveal (jamb, head or sill) instead.
+            float rz = st < 0.5 ? 0.2 : st < 1.5 ? 0.14 : st < 2.5 ? 0.02 : st < 3.5 ? 0.12 : 0.06;
+            vec2 po = rd.xy / max(rd.z, 0.08) * rz;
+            float bg = bx + po.x / bay, fg = f + po.y / fh;
+            float openG = step(wr.x, bg) * step(bg, wr.y) * step(wr.z, fg) * step(fg, wr.w);
+            float reveal = inWin * (1.0 - openG);
             float fwB = 0.05 / bay, fwF = 0.05 / fh;   // 5 cm frames
-            float inner = step(wr.x + fwB, bx) * step(bx, wr.y - fwB) * step(wr.z + fwF, f) * step(f, wr.w - fwF);
-            // mullions: one in the middle of the old windows, one per 1.2 m in the ribbons
-            float mullX = st < 0.5 ? step(abs(bx - 0.5), 0.012) : st > 2.5 && st < 3.5 ? step(fract(along / 1.25), 0.03) : st > 1.5 && st < 2.5 ? 0.0 : step(abs(bx - 0.62), 0.01);
-            float transomY = st < 1.5 ? step(abs(f - (wr.z + (wr.w - wr.z) * 0.72)), 0.012) : 0.0;
-            float glassM = inWin * inner * (1.0 - mullX) * (1.0 - transomY);
-            float frameM = inWin * (1.0 - glassM);
+            float inner = step(wr.x + fwB, bg) * step(bg, wr.y - fwB) * step(wr.z + fwF, fg) * step(fg, wr.w - fwF);
+            // mullions: one in the middle of the old windows, one per 1.25 m in the ribbons
+            float alongG = along + po.x;
+            float mullX = st < 0.5 ? step(abs(bg - 0.5), 0.012) : st > 2.5 && st < 3.5 ? step(fract(alongG / 1.25), 0.03) : st > 1.5 && st < 2.5 ? 0.0 : step(abs(bg - 0.62), 0.01);
+            float transomY = st < 1.5 ? step(abs(fg - (wr.z + (wr.w - wr.z) * 0.72)), 0.012) : 0.0;
+            float glassM = inWin * openG * inner * (1.0 - mullX) * (1.0 - transomY);
+            float frameM = inWin * openG * (1.0 - glassM);
             vec3 frameC = st < 0.5 && r2 > 0.55 ? vec3(0.42, 0.5, 0.42) : vec3(0.76, 0.78, 0.78) * (0.85 + 0.2 * r2);
             // the sill and the dark stain that drips from it
             float under = step(wr.x - 0.02, bx) * step(bx, wr.y + 0.02) * (1.0 - pier);
@@ -289,14 +298,15 @@ function facadeMaterial() {
             float drip = under * step(f, wr.z - 0.03) * smoothstep(0.0, wr.z, f) * (0.35 + 0.65 * hkN1(vec2(along * 22.0, y * 0.4 + sd))) * step(st, 3.5);
             col *= 1.0 - 0.28 * drip * (0.5 + 0.5 * fract(sd * 7.0));
             col = mix(col, wall * 1.12, sill);
-            // the reveal: the frame sits back in the wall, its top and one side in shadow
-            float rv = inWin * (1.0 - inner) * step(st, 1.5);
             col = mix(col, frameC, frameM);
-            col *= 1.0 - 0.35 * rv * step(wr.w - fwF, f);
+            // the reveal surfaces: the head (soffit) darkest, the jambs mid, the sill light
+            float rvShade = fg > wr.w ? 0.45 : fg < wr.z ? 0.95 : 0.7;
+            col = mix(col, wall * rvShade, reveal);
+            vec3 emitW = vec3(0.0);
             if (glassM > 0.0) {
               // interior mapping: a room the size of the cell, 4.5 m deep, behind the glass
               float W = bay, H = fh, D = st > 1.5 && st < 2.5 ? 7.0 : 4.5;
-              vec3 p0 = vec3(bx * W, f * H, 0.0);
+              vec3 p0 = vec3(clamp(bg, 0.0, 1.0) * W, clamp(fg, 0.0, 1.0) * H, 0.0);
               vec3 d = rd;
               float tx = d.x > 0.0 ? (W - p0.x) / d.x : -p0.x / min(d.x, -1e-4);
               float ty = d.y > 0.0 ? (H - p0.y) / d.y : -p0.y / min(d.y, -1e-4);
@@ -325,16 +335,26 @@ function facadeMaterial() {
               vec3 inside = rc * fall * mix(vec3(0.09), lc * 1.0, isLit) + tube * isLit * lc * 3.0;
               // curtains drawn part way, lit from behind in the lit rooms; grilles low on the tong lau
               float cw = fract(rr * 23.0);
-              float curtain = step(0.45, cw) * (step(bx, wr.x + (wr.y - wr.x) * cw * 0.6) + step(wr.y - (wr.y - wr.x) * (cw - 0.45) * 0.8, bx)) * step(st, 1.5);
+              float curtain = step(0.45, cw) * (step(bg, wr.x + (wr.y - wr.x) * cw * 0.6) + step(wr.y - (wr.y - wr.x) * (cw - 0.45) * 0.8, bg)) * step(st, 1.5);
               vec3 cc = mix(vec3(0.8, 0.7, 0.52), mix(vec3(0.55, 0.62, 0.74), vec3(0.75, 0.45, 0.45), step(0.7, fract(rr * 31.0))), step(0.5, fract(rr * 13.0)));
               inside = mix(inside, cc * mix(vec3(0.12), lc * 0.85, isLit), clamp(curtain, 0.0, 1.0));
+              // (the grille is on the wall face, in front of the recess)
               float grille = st < 0.5 && fl < 2.5 && r1 > 0.35 ? max(step(fract(along / 0.12), 0.12), step(fract(y / 0.45), 0.08)) : 0.0;
               // the pane itself: dark and glossy (the sky reflects from the PBR specular), the
               // room shows through it as emitted light
               col = mix(vec3(0.015, 0.018, 0.02), vec3(0.18, 0.2, 0.2), grille);
-              totalEmissiveRadiance += inside * (1.0 - grille) * (st > 1.5 && st < 2.5 ? 0.6 : 1.0);
+              emitW = inside * (1.0 - grille) * (st > 1.5 && st < 2.5 ? 0.6 : 1.0);
               hkGlass = 1.0 - grille;
             }
+            // distance anti-aliasing: where a window cell shrinks to a few pixels the pattern
+            // fades to its average (glass share, average room light), so it never shimmers
+            float fwC = max(fwidth(along / bay), fwidth(y / fh));
+            float far = smoothstep(0.12, 0.45, fwC);
+            float share = (wr.y - wr.x) * (wr.w - wr.z) * (st > 0.5 && st < 1.5 ? 0.75 : 1.0);
+            col = mix(col, mix(wall * 0.95, vec3(0.03), share * 0.85), far);
+            emitW = mix(emitW, share * mix(vec3(0.06), vec3(0.95, 0.88, 0.78), 0.22) * 0.8, far);
+            hkGlass = mix(hkGlass, share * 0.7, far);
+            totalEmissiveRadiance += emitW;
           } else if (hkV > 0.5 && st > 3.5 && st < 4.5) {
             // --- shopfront: glazing into a deep lit shop (the vertex colour is its light)
             float shopW = 4.6;
@@ -398,7 +418,7 @@ function facadeMaterial() {
       .replace('#include <roughnessmap_fragment>', `#include <roughnessmap_fragment>
         roughnessFactor = mix(roughnessFactor, 0.06, hkGlass);`);
   };
-  m.customProgramCacheKey = () => 'hk-facade-v2';
+  m.customProgramCacheKey = () => 'hk-facade-v3';
   return m;
 }
 
