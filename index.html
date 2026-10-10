@@ -7,21 +7,14 @@
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <link rel="icon" href="data:," />
-    <title>Ocean Drive — Sunrise</title>
-    <meta name="description" content="Walk, ride and listen to Ocean Drive, Miami Beach at sunrise, right in your browser — every hotel, palm, wave and sound generated in code." />
+    <title>Causeway Bay 銅鑼灣 — Hong Kong</title>
+    <meta name="description" content="Walk, run and drive a Causeway Bay street in Hong Kong in your browser: tong lau, towers, neon signs, red taxis and keep-left traffic, every building, sign and sound generated in code. Built on top of Ocean Drive, completely changed." />
     <meta property="og:type" content="website" />
-    <meta property="og:title" content="Ocean Drive — Miami Beach at Sunrise" />
-    <meta property="og:description" content="Walk, ride and listen to Ocean Drive, Miami Beach at sunrise, right in your browser — every hotel, palm, wave and sound generated in code." />
-    <meta property="og:url" content="https://starknightt.github.io/ocean-drive/" />
-    <meta property="og:image" content="https://starknightt.github.io/ocean-drive/og-image.jpg" />
-    <meta property="og:image:width" content="1280" />
-    <meta property="og:image:height" content="640" />
-    <meta property="og:image:alt" content="Sunrise on Ocean Drive: pastel Art Deco hotels, palms and a mint 1950s convertible, with the title Ocean Drive, Miami Beach · Sunrise" />
-    <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:title" content="Ocean Drive — Miami Beach at Sunrise" />
-    <meta name="twitter:description" content="Walk, ride and listen to Ocean Drive, Miami Beach at sunrise, right in your browser — every hotel, palm, wave and sound generated in code." />
-    <meta name="twitter:image" content="https://starknightt.github.io/ocean-drive/og-image.jpg" />
-    <meta name="twitter:image:alt" content="Sunrise on Ocean Drive: pastel Art Deco hotels, palms and a mint 1950s convertible, with the title Ocean Drive, Miami Beach · Sunrise" />
+    <meta property="og:title" content="Causeway Bay 銅鑼灣 — Hong Kong" />
+    <meta property="og:description" content="A Causeway Bay street in Hong Kong, generated in code in Three.js. Built on top of Ocean Drive, completely changed." />
+    <meta name="twitter:card" content="summary" />
+    <meta name="twitter:title" content="Causeway Bay 銅鑼灣 — Hong Kong" />
+    <meta name="twitter:description" content="A Causeway Bay street in Hong Kong, generated in code in Three.js. Built on top of Ocean Drive, completely changed." />
     <style>
       html, body { margin: 0; height: 100%; overflow: hidden; background: #c9b7a4; overscroll-behavior: none; }
       canvas { display: block; touch-action: none; }
@@ -100,8 +93,8 @@
       @media (orientation: portrait) { #loader { --hz: 60%; --sun: clamp(104px, 30vmin, 260px); } }
       #loader .ld-sky {
         position: absolute; left: 0; right: 0; top: 0; height: var(--hz); overflow: hidden;
-        background: linear-gradient(to bottom, #15152f 0%, #262449 20%, #4b3864 40%, #86546f 57%,
-          #c47a7a 71%, #e9a283 83%, #f6c79a 93%, #fbe2b6 100%);
+        background: linear-gradient(to bottom, #172340 0%, #2a3a63 20%, #56557e 40%, #93708a 57%,
+          #cf8f7c 71%, #eeae7f 83%, #f8cf96 93%, #fde6b8 100%);
       }
       #loader .ld-dawn {
         position: absolute; inset: 0; opacity: calc(var(--p) * 0.6);
@@ -130,7 +123,7 @@
       }
       #loader .ld-sea {
         position: absolute; left: 0; right: 0; top: var(--hz); bottom: 0; overflow: hidden;
-        background: linear-gradient(to bottom, #d9a795 0%, #ad7a83 9%, #775676 32%, #3d3357 66%, #1b1a34 100%);
+        background: linear-gradient(to bottom, #b98a7e 0%, #8a6474 9%, #5a4766 32%, #2f2a4a 66%, #15142a 100%);
       }
       #loader .ld-water {
         position: absolute; inset: 0; perspective: 240px; perspective-origin: 50% 0;
@@ -170,6 +163,15 @@
           repeating-linear-gradient(to bottom, transparent 0 7px, rgba(255, 246, 220, 0.8) 7px 8.5px, transparent 8.5px 12px);
         animation: ld-glint 4s linear infinite;
       }
+      /* the Causeway Bay skyline (drawn by the loader script): towers with lit windows and
+         neon, in two layers, the far one paler in the haze */
+      #loader .ld-city { position: absolute; left: 0; right: 0; bottom: 0; height: 40%; pointer-events: none; }
+      #loader .ld-city svg { position: absolute; left: 0; bottom: 0; width: 100%; height: 100%; }
+      #loader .ld-credit {
+        margin-top: clamp(10px, 1.8vmin, 16px); font: 400 10px/1.4 var(--sans); letter-spacing: 0.24em;
+        text-transform: uppercase; color: rgba(255, 236, 214, 0.7); text-shadow: 0 1px 8px rgba(20, 14, 34, 0.8);
+      }
+      #loader .ld-credit b { font-weight: 500; color: rgba(255, 240, 220, 0.85); }
       #loader .ld-horizon {
         position: absolute; left: 0; right: 0; top: var(--hz); height: 1px; margin-top: -0.5px;
         background: linear-gradient(90deg, transparent, rgba(92, 58, 84, 0.5) 12%, rgba(92, 58, 84, 0.5) 88%, transparent);
@@ -183,7 +185,7 @@
         position: absolute; left: 0; right: 0; top: calc(var(--hz) * 0.36); transform: translateY(-50%);
         text-align: center; animation: ld-rise 2.2s cubic-bezier(0.2, 0.6, 0.2, 1) both;
       }
-      #loader .ld-fan { display: block; width: clamp(64px, 8vmin, 96px); margin: 0 auto 14px; color: rgba(255, 228, 190, 0.75); }
+      #loader .ld-fan { display: block; width: clamp(26px, 4.2vmin, 44px); margin: 0 auto 14px; color: rgba(255, 228, 190, 0.8); filter: drop-shadow(0 0 6px rgba(255, 120, 150, 0.45)); }
       #loader .ld-time, #loader .ld-sub, #loader .ld-rule {
         display: flex; align-items: center; justify-content: center; gap: 14px;
       }
@@ -205,7 +207,7 @@
       #loader .ld-dia { width: 7px; height: 7px; border: 1px solid currentColor; transform: rotate(45deg); box-sizing: border-box; }
       #loader .ld-dia::after { content: ''; display: block; margin: 1.5px; height: 2px; background: currentColor; }
       #loader .ld-sub {
-        font: italic 400 clamp(14px, 2vmin, 19px)/1.2 var(--serif); letter-spacing: 0.06em; color: rgba(255, 243, 228, 0.88);
+        font: italic 400 clamp(14px, 2vmin, 19px)/1.2 var(--serif); letter-spacing: 0.06em; color: rgba(255, 243, 228, 0.92); text-shadow: 0 1px 10px rgba(20, 14, 34, 0.7);
       }
       #loader .ld-status {
         position: absolute; left: 0; right: 0; top: calc(var(--hz) + clamp(22px, 5vh, 46px)); text-align: center;
@@ -263,12 +265,13 @@
   </head>
   <body class="loading">
     <!-- LOADER markup (see the LOADER <style> in <head>) -->
-    <div id="loader" role="progressbar" aria-label="Loading Ocean Drive" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+    <div id="loader" role="progressbar" aria-label="Loading Causeway Bay" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
       <div class="ld-sky">
         <div class="ld-dawn"></div>
         <div class="ld-rays"></div>
         <div class="ld-haze"></div>
         <div class="ld-sun"></div>
+        <div class="ld-city"></div>
       </div>
       <div class="ld-sea">
         <div class="ld-water"><div class="ld-plane"><div class="ld-bands"></div></div></div>
@@ -276,28 +279,30 @@
       </div>
       <div class="ld-horizon"><div class="ld-bar"></div></div>
       <div class="ld-mark">
-        <svg class="ld-fan" viewBox="0 0 120 40" fill="none" stroke="currentColor" stroke-width="0.9" aria-hidden="true">
-          <path d="M8 38 A52 52 0 0 1 112 38" />
-          <path d="M26 38 A34 34 0 0 1 94 38" />
-          <path d="M60 38 V4 M60 38 L38 9 M60 38 L82 9 M60 38 L20 20 M60 38 L100 20 M60 38 L10 32 M60 38 L110 32" opacity="0.8" />
-          <path d="M2 38 H118" />
+        <svg class="ld-fan" viewBox="0 0 40 64" fill="none" stroke="currentColor" stroke-width="1" aria-hidden="true">
+          <rect x="6" y="2" width="28" height="60" rx="2" />
+          <rect x="9.5" y="5.5" width="21" height="53" rx="1" opacity="0.55" />
+          <text x="20" y="24" text-anchor="middle" font-size="15" fill="currentColor" stroke="none" font-family="'PingFang HK','Noto Sans CJK TC','Microsoft JhengHei',sans-serif">銅</text>
+          <text x="20" y="41" text-anchor="middle" font-size="15" fill="currentColor" stroke="none" font-family="'PingFang HK','Noto Sans CJK TC','Microsoft JhengHei',sans-serif">鑼</text>
+          <text x="20" y="57" text-anchor="middle" font-size="15" fill="currentColor" stroke="none" font-family="'PingFang HK','Noto Sans CJK TC','Microsoft JhengHei',sans-serif">灣</text>
         </svg>
-        <div class="ld-time"><i class="ld-l"></i><span>6:52 AM</span><i class="ld-l"></i></div>
-        <h1 class="ld-title">Ocean Drive</h1>
+        <div class="ld-time"><i class="ld-l"></i><span>5:12 PM</span><i class="ld-l"></i></div>
+        <h1 class="ld-title">Causeway Bay</h1>
         <div class="ld-rule"><i class="ld-l"></i><i class="ld-dia"></i><i class="ld-l"></i></div>
-        <div class="ld-sub">Miami Beach · Sunrise</div>
+        <div class="ld-sub">銅鑼灣 · Hong Kong · Late afternoon</div>
+        <div class="ld-credit">Built on <b>Ocean Drive</b> · completely rebuilt for Hong Kong</div>
       </div>
       <div class="ld-status">
-        <div class="ld-label">Waiting for first light…</div>
+        <div class="ld-label">Waiting for the next tram…</div>
         <div class="ld-pct">00%</div>
         <div class="ld-error">
-          <p class="ld-err-title">The sunrise couldn’t be drawn here.</p>
+          <p class="ld-err-title">The street couldn’t be drawn here.</p>
           <p class="ld-err-body"></p>
           <button type="button" onclick="location.reload()">Try again</button>
         </div>
       </div>
-      <div class="ld-corner l">25°46′ N · 80°08′ W</div>
-      <div class="ld-corner r">Collins Park · Low tide</div>
+      <div class="ld-corner l">22°16′ N · 114°11′ E</div>
+      <div class="ld-corner r">Hennessy Road · 軒尼詩道</div>
       <div class="ld-bloom"></div>
       <div class="ld-vig"></div>
     </div>
@@ -309,6 +314,29 @@
         if (!el) return;
         if (document.documentElement.classList.contains('shot')) {
           el.remove(); document.body.classList.remove('loading'); return;
+        }
+        // the skyline: two layers of towers, lit windows, a few neon signs on the near ones
+        {
+          const city = el.querySelector('.ld-city');
+          let seed = 852;
+          const rnd = () => ((seed = (seed * 1664525 + 1013904223) >>> 0) / 4294967296);
+          const W = 1000, H = 300, parts = [];
+          for (const [layer, fill, hMin, hMax, lit] of [[0, '#5b5274', 0.35, 0.95, 0.08], [1, '#1d1a33', 0.18, 0.72, 0.16]]) {
+            for (let x = -10; x < W;) {
+              const w = 18 + rnd() * 46, h = H * (hMin + rnd() * rnd() * (hMax - hMin)), y = H - h;
+              parts.push(`<rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${(w + 0.6).toFixed(1)}" height="${h.toFixed(1)}" fill="${fill}"/>`);
+              if (rnd() < 0.4) parts.push(`<rect x="${(x + w * 0.4).toFixed(1)}" y="${(y - 6 - rnd() * 10).toFixed(1)}" width="${(w * 0.2).toFixed(1)}" height="16" fill="${fill}"/>`);
+              for (let wy = y + 6; wy < H - 6; wy += 7) for (let wx = x + 4; wx < x + w - 5; wx += 6) {
+                if (rnd() < lit) parts.push(`<rect x="${wx.toFixed(1)}" y="${wy.toFixed(1)}" width="3" height="3.2" fill="${rnd() < 0.5 ? '#ffd89a' : '#e8f1ff'}" opacity="${(0.45 + rnd() * 0.5).toFixed(2)}"/>`);
+              }
+              if (layer === 1 && rnd() < 0.3 && h > 60) {
+                const c = ['#ff3b5c', '#36f1cd', '#ffd23f', '#f45dff', '#5fb0ff'][Math.floor(rnd() * 5)];
+                parts.push(`<rect x="${(x + w - 7).toFixed(1)}" y="${(H - h * 0.55).toFixed(1)}" width="5" height="${(h * 0.3).toFixed(1)}" fill="none" stroke="${c}" stroke-width="1.4" opacity="0.9"/>`);
+              }
+              x += w + (rnd() < 0.15 ? 4 + rnd() * 10 : 0);
+            }
+          }
+          city.innerHTML = `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" aria-hidden="true">${parts.join('')}</svg>`;
         }
         const labelEl = el.querySelector('.ld-label'), pctEl = el.querySelector('.ld-pct');
         const t0 = performance.now();
@@ -346,7 +374,7 @@
 
         function finish() {
           done = true;
-          pending = 'Good morning.';
+          pending = '到了 · Here we are.';
           el.classList.add('ld-exit');
           setTimeout(() => document.body.classList.remove('loading'), 900);
           setTimeout(() => { el.remove(); delete window.__loadProgress; }, 1700);
@@ -383,9 +411,9 @@
     <!-- /LOADER -->
     <div id="overlay" class="hidden">
       <div class="caption">
-        <h1>Ocean Drive</h1>
-        <p class="place">Miami Beach · 6:52 am</p>
-        <p class="how"><b>Click to walk</b> — WASD to move, mouse to look, Space to jump, Shift to stroll faster, E to ride the bike or the ATV or drive the convertible, M to mute</p>
+        <h1>Causeway Bay</h1>
+        <p class="place">銅鑼灣 · Hong Kong · 5:12 pm</p>
+        <p class="how"><b>Click to walk</b> — WASD to move, mouse to look, Space to jump, Shift (or Caps Lock) to run, V for third person, E to ride the bike or drive the convertible, M to mute</p>
       </div>
     </div>
     <div id="note"></div>

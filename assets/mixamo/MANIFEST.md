@@ -1,4 +1,8 @@
-# Mixamo assets — Ocean Drive, Miami Beach at sunrise
+# Mixamo assets — from Ocean Drive, now used in Causeway Bay
+
+These are Ocean Drive's Mixamo characters and clips, reused unchanged by the Causeway Bay
+scene (the crowd, the drivers and the player's third-person body). The "intended use" notes
+below are Ocean Drive's.
 
 Source: [Mixamo](https://www.mixamo.com) (Adobe), downloaded with the project owner's account.
 Licence: royalty-free for use inside this project; the raw `.fbx` files must **not** be redistributed standalone, which is why `assets/mixamo/**/*.fbx` is git-ignored. This manifest is tracked so the set can be re-downloaded.

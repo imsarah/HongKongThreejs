@@ -1,5 +1,8 @@
 # Open-world driving: design and phased plan
 
+> Ocean Drive's plan, kept for reference. The open-world systems it describes carry over into
+> Causeway Bay; the beach, park, seawall ramps, surf and ATV parts no longer apply.
+
 This plan answers the request "give cars freedom to go outside road and can i go anywhere and
 make other cars drivable too … implement whatever GTA has kind of … but on this theme". The
 target is sandbox-style driving mechanics in the existing realistic sunrise art style.

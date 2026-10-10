@@ -1,6 +1,55 @@
 # Changelog
 
-## 2026-10-01: fast travel
+## 2026-10-10: Causeway Bay, Hong Kong (rebuilt on top of Ocean Drive)
+
+The scene is no longer Ocean Drive. It keeps Ocean Drive's engine (renderer, sky and shadows,
+walker, vehicle and traffic simulations, Blender cars, Mixamo crowd, audio engine) and replaces
+everything on top of it with a Causeway Bay street. The entries below this one are Ocean
+Drive's own history.
+
+- **City.**
+  - The beach, ocean, surf, park, promenade, seawall, lifeguard towers and palms are gone.
+  - The east side of the road is a second row of buildings over a city sidewalk
+    (`src/world/ground.js` answers the height and water queries the old beach module did).
+- **Buildings** (`src/world/hk-buildings.js`).
+  - Kinds: tong lau, residential towers, older ribbon-window commercial blocks and glass office
+    towers, planned along both sides.
+  - Windows (facade shader):
+    - interior-mapped rooms with furniture, curtains and ceiling tubes;
+    - glass recessed behind parallax reveals;
+    - sills with drip stains, and grilles on the low tong lau floors;
+    - a distance fade of the window pattern to its average colour.
+  - Wall finishes: mosaic tiles, render or large tiles, with rain streaks.
+  - Geometry: balconies with railings, bay windows, aligned AC units, laundry poles, round
+    water tanks, rooftop huts, parapets and billboards.
+  - Shops under concrete canopies with tube lights, lit bilingual fascia signs and deep
+    interiors with shelves, and the odd roller shutter down.
+  - Projecting vertical neon and lightbox signs from a canvas atlas. All names are invented.
+- **Street** (`src/world/street.js`).
+  - Markings: double white centre lines, double yellow kerb lines, zebra crossings, and
+    望右 LOOK RIGHT at every crossing.
+  - Furniture: guard railings, tall lit street lamps, orange bins, red hydrants and black
+    traffic-light housings.
+  - Signs: Hong Kong street plates (軒尼詩道 Hennessy Road and real Causeway Bay side streets),
+    停 STOP signs, metered-parking and pedestrian-crossing signs.
+- **Traffic keeps left.**
+  - The lanes, stop lines, signal heads, cross-street stop signs and parked-car headings are all
+    mirrored.
+  - About a third of the traffic is red taxis with a lit roof sign.
+  - Every car has a Hong Kong plate, yellow at the rear and white at the front, with planar UVs
+    added to the models' blank plates at load (`src/world/hk-plates.js`).
+- **Player.**
+  - A third-person view on foot (V / C), with a Mixamo body that blends idle, walk and run by
+    speed, and a shoulder camera that pulls in at walls (`src/player/avatar.js`).
+  - Running on Shift or Caps Lock.
+  - The speedometer defaults to km/h.
+  - The lifeguard ATV is gone, and the bike is parked on the east sidewalk.
+- **Light.** A late-afternoon sun in the south-west (az 238°, el 24°), more sky fill for the
+  street canyon, and a shadow box and map tall enough for the towers. The road surface is split
+  into short rows, so its shadow coordinates keep their precision.
+- **Text.** New loading screen, titles, README and this entry.
+
+## 2026-10-01: fast travel (Ocean Drive)
 
 - The number keys 1–0 (touch: a pin button top right with the same list) jump to ten places
   through a quick fade to warm white: the beach waterline, your car, the hotel sidewalk, the

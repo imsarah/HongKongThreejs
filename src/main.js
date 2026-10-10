@@ -111,7 +111,7 @@ const requestShadow = () => { shadowWanted = true; };
 
 preloadCars();   // the car models download while the world builds
 const peopleLoad = params.get('people') === 'procedural' ? Promise.resolve(null) : preloadPeople();   // and the people
-await loadStep(0.1, 'Raising the sun…'); // LOADER
+await loadStep(0.1, 'Lighting the sky…'); // LOADER
 const sky = await createSky(renderer, scene, { requestShadow });
 bootMark('sky');
 await nextFrame();
@@ -294,14 +294,14 @@ function begin() {
 // TOUCH: joystick + drag-look, shown on coarse-pointer devices or after the first touch
 let touch = null;
 const howEl = overlay.querySelector('.how');
-if (OPEN_WORLD && howEl) howEl.innerHTML = '<b>Click to walk</b> — WASD to move, mouse to look, Space to jump, Shift (or Caps Lock) to run, V for third person, E to ride the bike or the ATV or get into any parked car (C camera, Space handbrake, H horn, R back to the road), M to mute';
+if (OPEN_WORLD && howEl) howEl.innerHTML = '<b>Click to walk</b> — WASD to move, mouse to look, Space to jump, Shift (or Caps Lock) to run, V for third person, E to ride the bike or get into any parked car (C camera, Space handbrake, H horn, R back to the road), M to mute';
 function enableTouch() {
   if (touch || SHOT) return;
   touch = createTouchControls(controls, { audio, onRide: () => vehicles.toggle(), onCamera: () => (vehicles.riding ? vehicles.toggleView() : toggleThird()), onRadio: () => radioNext() });
   window.__touch = touch;
   if (howEl) howEl.innerHTML = OPEN_WORLD
-    ? '<b>Tap to walk</b> — left thumb to move, drag to look, Ride by the bike or the ATV, Enter at any parked car’s door'
-    : '<b>Tap to walk</b> — left thumb to move, drag to look, Ride by the bike, the ATV or the convertible';
+    ? '<b>Tap to walk</b> — left thumb to move (full tilt runs), drag to look, camera button for third person, Ride by the bike, Enter at any parked car’s door'
+    : '<b>Tap to walk</b> — left thumb to move (full tilt runs), drag to look, camera button for third person, Ride by the bike or the convertible';
   if (controls.active && !controls.locked) touch.setEnabled(true);
 }
 function beginTouch() {
@@ -597,7 +597,7 @@ function frame(t) {
 
 renderer.shadowMap.needsUpdate = true;
 releaseGeometryAfterUpload(scene);
-await loadStep(0.8, 'Mixing the morning light…'); // LOADER: shader compile phase
+await loadStep(0.8, 'Mixing the afternoon light…'); // LOADER: shader compile phase
 // compile the variants the frame actually uses: the scene renders into the composer's
 // linear half-float target (no tone mapping), not the canvas
 const direct = params.has('nopost');
@@ -622,7 +622,7 @@ const target = direct ? null : post.composer.readBuffer;
     const jobs = objs.slice(i, i + BATCH).map((o) => renderer.compileAsync(o, camera, scene));
     renderer.setRenderTarget(null);
     await Promise.all(jobs);
-    await loadStep(0.8 + 0.05 * (i + BATCH) / objs.length, 'Mixing the morning light…');
+    await loadStep(0.8 + 0.05 * (i + BATCH) / objs.length, 'Mixing the afternoon light…');
   }
 }
 bootMark('compiled');

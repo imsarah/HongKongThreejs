@@ -1,6 +1,11 @@
-# The brief
+# The briefs
 
-This is the brief Ocean Drive was built from, unedited. The list after it says where the scene
+This repository is Causeway Bay, Hong Kong, built on top of Ocean Drive. Below are both briefs:
+first the original one Ocean Drive was built from, unedited, then the Hong Kong one.
+
+## Ocean Drive (the original brief)
+
+This is the brief Ocean Drive was built from, unedited. The list after it says where that scene
 ended up going beyond it.
 
 ---
@@ -33,7 +38,7 @@ i'm not gaming rn btw
 
 ---
 
-## What changed along the way
+### What changed along the way (Ocean Drive)
 
 The brief was the starting point, not the fence. The day after the overnight build, at the user's
 request, the scope grew past it:
@@ -51,3 +56,18 @@ request, the scope grew past it:
   asked for WASD and mouse look.
 - **A loader.** A sunrise title card whose progress bar reports the real build stages.
 - **Three lifeguard towers** instead of one, all climbable.
+
+## Causeway Bay, Hong Kong (the second brief)
+
+The Hong Kong version was asked for in conversation, in steps, rather than written as one brief:
+
+- "is it possible for you to turn this ocean drive scene to hk"
+- the place: a Causeway Bay street, with tong lau buildings, neon signs and taxis; a full Hong
+  Kong pass, reusing some of the cars with their licence plates changed
+- improve the buildings' quality first (before rebuilding the street to the real map)
+- add a third-person view and a running mode
+- show in the docs and the loading screen that the scene is built on top of Ocean Drive but
+  completely changed
+
+What came of it is in the [README](README.md) and the top entry of the
+[CHANGELOG](CHANGELOG.md).
