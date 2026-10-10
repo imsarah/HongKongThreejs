@@ -171,10 +171,18 @@ function roadMesh() {
   const { map, normalMap, macro } = asphaltTextures();
   const nx = 38;
   const pos = [], uv = [], idx = [];
+  // (rows along z, 10 m apart near the district, 100 m beyond: one 5 km triangle per strip
+  // lost precision in its interpolated shadow coordinates and shaded in bands)
+  const zs = [];
+  for (let z = -Z; z < -600; z += 100) zs.push(z);
+  for (let z = -600; z < 600; z += 10) zs.push(z);
+  for (let z = 600; z <= Z; z += 100) zs.push(z);
+  if (zs[zs.length - 1] !== Z) zs.push(Z);
+  const nz = zs.length;
   for (let i = 0; i <= nx; i++) {
     const x = PARKING.x0 + (LANES.x1 - PARKING.x0) * (i / nx), y = roadHeight(x);
-    for (const z of [-Z, Z]) { pos.push(x, y, z); uv.push(x / 8, -z / 8); }
-    if (i < nx) { const a = i * 2; idx.push(a, a + 1, a + 2, a + 1, a + 3, a + 2); }
+    for (const z of zs) { pos.push(x, y, z); uv.push(x / 8, -z / 8); }
+    if (i < nx) for (let j = 0; j < nz - 1; j++) { const a = i * nz + j, c = a + nz; idx.push(a, a + 1, c, a + 1, c + 1, c); }
   }
   const g = new THREE.BufferGeometry();
   g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
