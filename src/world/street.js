@@ -5,8 +5,9 @@ import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import {
   WORLD_Z, CURB_HEIGHT, SIDEWALK_W, PARKING, LANES, SIDEWALK_E, PARK, CAR, CROSSWALK_Z, roadHeight,
-  CROSS, CROSS_STREETS, crossLegs, crossStreetAt, crossRoadHeight, DISTRICT,
+  CROSS, CROSS_STREETS, crossLegs, crossStreetAt, crossRoadHeight, DISTRICT, MAIN_ROAD,
 } from './layout.js';
+import { HK_FONT } from './hk-buildings.js';
 import { PALM_TREES } from './palms.js';
 import { OPEN_WORLD } from '../vehicles/specs.js';
 import { mulberry32, fbmField } from '../textures/noise.js';
@@ -303,11 +304,17 @@ function markings() {
   };
   const YEL = 0xf2c418, WHT = 0xf0ede4;
   const cx = LANES.centerX;
-  // double yellow centre line (interrupted by the crosswalks and through the intersections)
+  // Hong Kong: double white centre line (interrupted by the crosswalks and through the
+  // intersections)
   const legGaps = NEAR_CROSS.map((c) => { const [n, s] = crossLegs(c.z); return [n[0] - 0.6, s[1] + 0.6]; });
   for (const [z0, z1] of segments(-Z, Z, [[CW.z0 - 0.6, CW.z1 + 0.6], ...legGaps])) {
-    quad(cx - 0.21, cx - 0.08, z0, z1, YEL, 1);
-    quad(cx + 0.08, cx + 0.21, z0, z1, YEL, 1);
+    quad(cx - 0.21, cx - 0.09, z0, z1, WHT, 0.95);
+    quad(cx + 0.09, cx + 0.21, z0, z1, WHT, 0.95);
+  }
+  // double yellow no-stopping lines along the east kerb
+  for (const [z0, z1] of segments(-Z, Z, [[CW.z0 - 0.3, CW.z1 + 0.3], ...NEAR_CROSS.flatMap((c) => crossLegs(c.z).map(([a, b]) => [a - 0.3, b + 0.3]))])) {
+    quad(LANES.x1 - 0.62, LANES.x1 - 0.52, z0, z1, YEL, 0.95);
+    quad(LANES.x1 - 0.46, LANES.x1 - 0.36, z0, z1, YEL, 0.95);
   }
   // parking lane edge line and bay ticks (none across the cross-street mouths)
   const parkGaps = [[CW.z0 - 6, CW.z1 + 3], ...CROSS_STREETS.map((c) => { const [n, s] = crossLegs(c.z); return c.far ? [c.z - OPEN_W - 2, c.z + OPEN_W + 2] : [n[0] - 6, s[1] + 3]; })];
@@ -317,36 +324,36 @@ function markings() {
     const { hw, xw0, xw1 } = CROSS;
     // cross-street double yellow and the eastbound stop line
     const stopX = c.far ? SIDEWALK_W.x0 - 1.5 : xw0 - 1.6;
-    quadH(CROSS_WEST, stopX - 0.6, c.z - 0.21, c.z - 0.08, YEL, 1, 40, 1);
-    quadH(CROSS_WEST, stopX - 0.6, c.z + 0.08, c.z + 0.21, YEL, 1, 40, 1);
-    quadH(stopX - 0.45, stopX, c.z + 0.2, c.z + hw - GUTTER_W, WHT, 0.9, 1, 6);
+    quadH(CROSS_WEST, stopX - 0.6, c.z - 0.21, c.z - 0.09, WHT, 0.95, 40, 1);
+    quadH(CROSS_WEST, stopX - 0.6, c.z + 0.09, c.z + 0.21, WHT, 0.95, 40, 1);
+    // (eastbound keeps left: the north half)
+    quadH(stopX - 0.45, stopX, c.z - hw + GUTTER_W, c.z - 0.2, WHT, 0.9, 1, 6);
     if (c.far) continue;
     // continental crosswalk over the cross street, bars along its traffic
-    for (let z = c.z - hw + GUTTER_W + 0.25; z < c.z + hw - GUTTER_W - 0.5; z += 1.2) quadH(xw0 + 0.35, xw1 - 0.35, z, z + 0.6, WHT, 0.95, 4, 1);
+    for (let z = c.z - hw + GUTTER_W + 1.0; z < c.z + hw - GUTTER_W - 1.3; z += 1.2) quadH(xw0 + 0.35, xw1 - 0.35, z, z + 0.6, WHT, 0.95, 4, 1);
     quadH(xw0, xw0 + 0.3, c.z - hw + GUTTER_W, c.z + hw - GUTTER_W, WHT, 0.95, 1, 12);
     quadH(xw1 - 0.3, xw1, c.z - hw + GUTTER_W, c.z + hw - GUTTER_W, WHT, 0.95, 1, 12);
     // crosswalks over Ocean Drive on the north and south legs
     for (const [z0, z1] of crossLegs(c.z)) {
-      for (let x = PARKING.x0 + GUTTER_W + 0.2; x < LANES.x1 - GUTTER_W - 0.5; x += 1.2) quad(x, x + 0.6, z0 + 0.4, z1 - 0.4, WHT, 0.95);
+      for (let x = PARKING.x0 + GUTTER_W + 1.0; x < LANES.x1 - GUTTER_W - 1.3; x += 1.2) quad(x, x + 0.6, z0 + 0.4, z1 - 0.4, WHT, 0.95);
       quad(PARKING.x0 + GUTTER_W, LANES.x1 - GUTTER_W, z0, z0 + 0.3, WHT, 0.95, 16);
       quad(PARKING.x0 + GUTTER_W, LANES.x1 - GUTTER_W, z1 - 0.3, z1, WHT, 0.95, 16);
     }
     // stop bars on Ocean Drive's approaches (cars hold here for the crossing and the signal)
     {
       const [n, s] = crossLegs(c.z);
-      quad(cx + 0.2, LANES.x1 - GUTTER_W, s[1] + 1.6, s[1] + 2.0, WHT, 0.9, 6);
-      quad(PARKING.x1, cx - 0.2, n[0] - 2.0, n[0] - 1.6, WHT, 0.9, 6);
+      // (traffic keeps left: southbound in the east lane, northbound in the west one)
+      quad(cx + 0.2, LANES.x1 - GUTTER_W, n[0] - 2.0, n[0] - 1.6, WHT, 0.9, 6);
+      quad(PARKING.x1, cx - 0.2, s[1] + 1.6, s[1] + 2.0, WHT, 0.9, 6);
     }
   }
-  // east edge line
-  quad(LANES.x1 - GUTTER_W - 0.2, LANES.x1 - GUTTER_W - 0.1, -Z, Z, WHT, 0.8);
-  // continental crosswalk: bars parallel to traffic, framed by two ladder rails
-  for (let x = PARKING.x0 + GUTTER_W + 0.2; x < LANES.x1 - GUTTER_W - 0.5; x += 1.2) quad(x, x + 0.6, CW.z0 + 0.4, CW.z1 - 0.4, WHT, 0.95);
+  // zebra crossing: bars parallel to traffic, framed by two rails
+  for (let x = PARKING.x0 + GUTTER_W + 1.0; x < LANES.x1 - GUTTER_W - 1.3; x += 1.2) quad(x, x + 0.6, CW.z0 + 0.4, CW.z1 - 0.4, WHT, 0.95);
   quad(PARKING.x0 + GUTTER_W, LANES.x1 - GUTTER_W, CW.z0, CW.z0 + 0.3, WHT, 0.95, 16);
   quad(PARKING.x0 + GUTTER_W, LANES.x1 - GUTTER_W, CW.z1 - 0.3, CW.z1, WHT, 0.95, 16);
   // stop bars
-  quad(cx + 0.2, LANES.x1 - GUTTER_W, CW.z1 + 1.6, CW.z1 + 2.0, WHT, 0.9, 6);
-  quad(PARKING.x1, cx - 0.2, CW.z0 - 2.0, CW.z0 - 1.6, WHT, 0.9, 6);
+  quad(cx + 0.2, LANES.x1 - GUTTER_W, CW.z0 - 2.0, CW.z0 - 1.6, WHT, 0.9, 6);
+  quad(PARKING.x1, cx - 0.2, CW.z1 + 1.6, CW.z1 + 2.0, WHT, 0.9, 6);
   const g = new THREE.BufferGeometry();
   g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
   g.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
@@ -364,6 +371,57 @@ function markings() {
   };
   mat.customProgramCacheKey = () => 'street-paint-v2';
   const m = new THREE.Mesh(g, mat);
+  m.receiveShadow = true;
+  m.add(lookRight());
+  return m;
+}
+
+// "望右 LOOK RIGHT" painted on the road at the foot of every crossing (traffic keeps left,
+// so the nearest lane always comes from the right), readable from the kerb.
+function lookRight() {
+  const [cv, c] = canvas(1024, 256);
+  c.clearRect(0, 0, 1024, 256);
+  c.fillStyle = '#f2efe6';
+  c.textAlign = 'center';
+  c.textBaseline = 'middle';
+  c.font = `900 150px ${HK_FONT}`;
+  c.fillText('望右', 200, 132);
+  c.font = '900 120px Arial, Helvetica, sans-serif';
+  c.fillText('LOOK RIGHT', 650, 136);
+  // the arrow under the words points right
+  c.fillRect(380, 226, 520, 18);
+  c.beginPath(); c.moveTo(900, 206); c.lineTo(960, 235); c.lineTo(900, 264); c.closePath(); c.fill();
+  const map = tex(cv);
+  const pos = [], uv = [], idx = [];
+  // o: near kerb corner; u: along the reader's right; v: away from the reader
+  const decal = (o, u, v) => {
+    const b = pos.length / 3;
+    for (const [p, q] of [[0, 0], [1, 0], [1, 1], [0, 1]]) {
+      pos.push(o[0] + u[0] * p + v[0] * q, o[1], o[2] + u[2] * p + v[2] * q);
+      uv.push(p, q);
+    }
+    idx.push(b, b + 1, b + 2, b, b + 2, b + 3);
+  };
+  const W = 2.8, D = 0.7;
+  const legs = [[CW.z0, CW.z1], ...LEGS];
+  for (const [z0, z1] of legs) {
+    const zc = (z0 + z1) / 2;
+    const xw = PARKING.x0 + GUTTER_W + 0.15, xe = LANES.x1 - GUTTER_W - 0.15;
+    decal([xw, roadHeight(xw) + 0.008, zc - W / 2], [0, 0, W], [D, 0, 0]);
+    decal([xe, roadHeight(xe) + 0.008, zc + W / 2], [0, 0, -W], [-D, 0, 0]);
+  }
+  for (const cr of NEAR_CROSS) {
+    const xc = (CROSS.xw0 + CROSS.xw1) / 2, zn = cr.z - CROSS.hw + GUTTER_W + 0.15, zs = cr.z + CROSS.hw - GUTTER_W - 0.15;
+    const w = Math.min(W, CROSS.xw1 - CROSS.xw0 - 0.4);
+    decal([xc + w / 2, crossRoadHeight(xc, CROSS.hw) + 0.01, zn], [-w, 0, 0], [0, 0, D]);
+    decal([xc - w / 2, crossRoadHeight(xc, CROSS.hw) + 0.01, zs], [w, 0, 0], [0, 0, -D]);
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
+  g.setIndex(idx);
+  g.computeVertexNormals();
+  const m = new THREE.Mesh(g, new THREE.MeshStandardMaterial({ map, roughness: 0.75, alphaTest: 0.4, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 }));
   m.receiveShadow = true;
   return m;
 }
@@ -490,10 +548,10 @@ function sidewalks() {
     parts.push(slab(-400, wx - RAMP.run, -0.3, H, r.z0, r.z1, 3));
     parts.push(rampTop(wx - RAMP.run, H, SIDEWALK_W.x1, roadHeight(SIDEWALK_W.x1) + 0.005, r.z0, r.z1, 3));
   }
-  // park side
-  for (const [z0, z1] of segments(-Z, Z, rampExcl)) parts.push(slab(ex, SIDEWALK_E.x1, -0.3, H, z0, z1, 3));
+  // east side (continues under the east buildings)
+  for (const [z0, z1] of segments(-Z, Z, rampExcl)) parts.push(slab(ex, 40, -0.3, H, z0, z1, 3));
   for (const r of RAMPS) {
-    parts.push(slab(ex + RAMP.run, SIDEWALK_E.x1, -0.3, H, r.z0, r.z1, 3));
+    parts.push(slab(ex + RAMP.run, 40, -0.3, H, r.z0, r.z1, 3));
     parts.push(rampTop(SIDEWALK_E.x0, roadHeight(SIDEWALK_E.x0) + 0.005, ex + RAMP.run, H, r.z0, r.z1, 3));
   }
   // cross-street corners: sidewalk strips along the cross street, rounded curb returns,
@@ -713,22 +771,25 @@ function colored(g, hex) {
 const cyl = (r0, r1, h, seg, y, hex) => colored(new THREE.CylinderGeometry(r1, r0, h, seg).translate(0, y + h / 2, 0), hex);
 const box = (w, h, d, x, y, z, hex) => colored(new THREE.BoxGeometry(w, h, d).translate(x, y + h / 2, z), hex);
 
+// Hong Kong street lamp: a tall galvanised column, an arm out over the road (+x) and a
+// flat lantern; the lit lens is a separate glowing mesh (LAMP_HEADS)
+export const LAMP_ARM = 1.7, LAMP_H = 9.2;
 function lampGeo() {
-  const M = 0x28332f, G = 0xf1ece0;
+  const M = 0x9a9fa0, D = 0x6c7072;
+  const arm = new THREE.CatmullRomCurve3([
+    new THREE.Vector3(0, LAMP_H - 0.6, 0), new THREE.Vector3(0.12, LAMP_H - 0.05, 0), new THREE.Vector3(0.6, LAMP_H + 0.12, 0), new THREE.Vector3(LAMP_ARM, LAMP_H + 0.05, 0),
+  ]);
   return mergeGeometries([
-    box(0.46, 0.14, 0.46, 0, 0, 0, M),
-    cyl(0.2, 0.16, 0.55, 12, 0.14, M),             // fluted base
-    cyl(0.19, 0.19, 0.04, 16, 0.69, M),
-    cyl(0.075, 0.055, 3.6, 10, 0.72, M),           // pole
-    cyl(0.085, 0.085, 0.05, 12, 2.2, M),
-    cyl(0.09, 0.09, 0.06, 12, 4.25, M),
-    cyl(0.1, 0.2, 0.12, 12, 4.3, M),               // lantern seat
-    cyl(0.2, 0.23, 0.5, 16, 4.42, G),              // frosted glass (off)
-    cyl(0.25, 0.25, 0.04, 16, 4.92, M),
-    cyl(0.26, 0.06, 0.24, 16, 4.96, M),            // stepped Deco cap
-    colored(new THREE.SphereGeometry(0.06, 8, 6).translate(0, 5.24, 0), M),
+    cyl(0.17, 0.15, 0.9, 12, 0, D),                // base with its access door
+    box(0.12, 0.35, 0.02, 0, 0.3, 0.16, 0x7c8082),
+    cyl(0.1, 0.065, LAMP_H - 1.4, 10, 0.9, M),     // tapered column
+    colored(new THREE.TubeGeometry(arm, 12, 0.045, 6), M),
+    box(0.75, 0.14, 0.32, LAMP_ARM + 0.2, LAMP_H - 0.07, 0, 0x8a8f90),   // lantern
+    box(0.3, 0.04, 0.12, 0, 2.6, 0.05, 0xd8d8d0),   // the lamp-post number plate
   ]);
 }
+// world positions of the lit lantern lenses (filled by place() calls for lamps)
+const LAMP_HEADS = [];
 function payStationGeo() {
   return mergeGeometries([
     box(0.32, 0.9, 0.24, 0, 0, 0, 0x3b4046),
@@ -739,20 +800,31 @@ function payStationGeo() {
   ]);
 }
 function trashGeo() {
+  // the street litter bin: an orange drum, a dark lid and its slot
   return mergeGeometries([
-    cyl(0.28, 0.3, 0.85, 20, 0, 0x2f4a3e),
-    cyl(0.31, 0.31, 0.05, 20, 0.85, 0x3a3f3c),
-    colored(new THREE.SphereGeometry(0.3, 16, 6, 0, Math.PI * 2, 0, Math.PI / 2).scale(1, 0.35, 1).translate(0, 0.9, 0), 0x3a3f3c),
+    cyl(0.26, 0.28, 0.85, 20, 0, 0xe2732a),
+    cyl(0.29, 0.29, 0.06, 20, 0.85, 0x2e3a33),
+    colored(new THREE.SphereGeometry(0.29, 16, 6, 0, Math.PI * 2, 0, Math.PI / 2).scale(1, 0.3, 1).translate(0, 0.91, 0), 0x2e3a33),
+    box(0.2, 0.06, 0.02, 0, 0.72, 0.27, 0x1b1b1b),
   ]);
 }
 function hydrantGeo() {
+  // a red pillar hydrant with brass caps
   return mergeGeometries([
-    cyl(0.16, 0.16, 0.06, 12, 0, 0xc9a02a),
-    cyl(0.12, 0.11, 0.5, 12, 0.06, 0xd8ac2c),
-    colored(new THREE.SphereGeometry(0.12, 12, 6, 0, Math.PI * 2, 0, Math.PI / 2).translate(0, 0.56, 0), 0xc23a2e),
-    colored(new THREE.CylinderGeometry(0.05, 0.05, 0.36, 8).rotateZ(Math.PI / 2).translate(0, 0.38, 0), 0xd8ac2c),
-    colored(new THREE.CylinderGeometry(0.065, 0.065, 0.12, 8).rotateX(Math.PI / 2).translate(0, 0.36, 0.12), 0xd8ac2c),
+    cyl(0.16, 0.16, 0.06, 12, 0, 0xa8231c),
+    cyl(0.12, 0.12, 0.55, 12, 0.06, 0xc0281f),
+    colored(new THREE.SphereGeometry(0.12, 12, 6, 0, Math.PI * 2, 0, Math.PI / 2).translate(0, 0.61, 0), 0xc0281f),
+    colored(new THREE.CylinderGeometry(0.05, 0.05, 0.36, 8).rotateZ(Math.PI / 2).translate(0, 0.4, 0), 0xb89a40),
+    colored(new THREE.CylinderGeometry(0.065, 0.065, 0.12, 8).rotateX(Math.PI / 2).translate(0, 0.38, 0.12), 0xb89a40),
   ]);
+}
+// pedestrian guard railing along the kerb: a 4 m run of posts, rails and bars (along z)
+function railGeo() {
+  const C = 0xa9afaf, parts = [];
+  for (const z of [-2, 0, 2]) parts.push(box(0.06, 1.05, 0.06, 0, 0, z, C));
+  parts.push(box(0.05, 0.05, 4, 0, 1.0, 0, C), box(0.04, 0.04, 4, 0, 0.25, 0, C));
+  for (let z = -1.8; z < 1.9; z += 0.2) if (Math.abs(z) > 0.05 && Math.abs(Math.abs(z) - 2) > 0.05) parts.push(box(0.02, 0.75, 0.02, 0, 0.27, z, C));
+  return mergeGeometries(parts);
 }
 function bikeRackGeo() {
   const parts = [];
@@ -829,6 +901,12 @@ function placeKnock(list, kind, g, x, y, z, rotY, r) {
 let FORCE = false;
 const blocksCrossing = (x, z) => inCrossing(x, z) ||
   (inLeg(z) && (Math.abs(x - SIDEWALK_W.x1) < 1.6 || Math.abs(x - SIDEWALK_E.x0) < 1.6));
+// a lamp: arm toward the road; its lantern joins LAMP_HEADS
+function placeLamp(list, g, x, y, z, rot = x < LANES.centerX ? 0 : Math.PI) {
+  if (!place(list, g, x, y, z, rot, 0.14)) return false;
+  LAMP_HEADS.push({ x: x + Math.cos(rot) * (LAMP_ARM + 0.2), y: y + LAMP_H - 0.15, z: z - Math.sin(rot) * (LAMP_ARM + 0.2) });
+  return true;
+}
 function place(list, g, x, y, z, rotY = 0, col) {
   if (!FORCE && blocksCrossing(x, z)) return false;
   const c = g.clone().rotateY(rotY).translate(x, y, z);
@@ -849,41 +927,41 @@ function furniture() {
   const rnd = mulberry32(111);
   const palmNear = (x, z, d) => PALM_TREES.some((t) => Math.hypot(t.x - x, t.z - z) < d);
   const L = [];
-  const lamp = lampGeo(), pay = payStationGeo(), trash = trashGeo(), hyd = hydrantGeo(), rack = bikeRackGeo(), bench = benchGeo();
+  const lamp = lampGeo(), pay = payStationGeo(), trash = trashGeo(), hyd = hydrantGeo(), bench = benchGeo(), rail = railGeo();
   const drainW = drainGeo(1), drainE = drainGeo(-1), manhole = manholeGeo();
-  const newsB = newsBoxGeo(0x2f64a8), newsR = newsBoxGeo(0xb3372e), valet = valetGeo();
   const H = CURB_HEIGHT;
   const hx = SIDEWALK_W.x1 - 0.55, px = SIDEWALK_E.x0 + 0.55;
   for (let z = -290; z <= 290; z += 32) {
     for (const [x, zz] of [[px, z], [hx, z + 16]]) {
       let q = zz;
-      while (palmNear(x, q, 3.2)) q += 1.2;
       if (Math.abs(q - CROSSWALK_Z) < 3) q += 4;
-      place(L, lamp, x, H, q, 0, 0.14);
+      placeLamp(L, lamp, x, H, q);
       if (rnd() < 0.55) placeKnock(L, 'bin', trash, x, H, q + 1.6 * (rnd() < 0.5 ? 1 : -1), 0, 0.3);
     }
   }
-  // parking pay stations on the hotel side, bike racks near hotel entrances
+  // parking meters along the west parking bays
   for (let z = -270; z <= 270; z += 42 + rnd() * 10) {
     let q = z;
-    while (palmNear(hx, q, 1.4) || Math.abs(q - CAR.z) < 3) q += 1.5;
+    while (Math.abs(q - CAR.z) < 3) q += 1.5;
     place(L, pay, hx + 0.05, H, q, -Math.PI / 2, 'box');
   }
-  for (const z of [-58, -19, 27, 61]) place(L, rack, SIDEWALK_W.x1 - 1.1, H, z, 0, 'box');
-  // hotel-side bins, a valet stand at an entrance, news boxes, an extra pay kiosk
-  for (const z of [16, 4, -21, -47]) { let q = z; while (palmNear(hx, q, 1.2)) q += 1; placeKnock(L, 'bin', trash, hx - 0.1, H, q, 0, 0.3); }
-  place(L, valet, -26.9, H, 25.5, Math.PI / 2, 'box');
-  placeKnock(L, 'news-blue', newsB, SIDEWALK_W.x1 - 1.3, H, 13.2, -Math.PI / 2, 0.3);
-  placeKnock(L, 'news-red', newsR, SIDEWALK_W.x1 - 1.3, H, 13.8, -Math.PI / 2, 0.3);
-  place(L, pay, hx + 0.05, H, 20.5, -Math.PI / 2, 'box');
+  for (const z of [16, 4, -21, -47]) placeKnock(L, 'bin', trash, hx - 0.1, H, z, 0, 0.3);
   // hydrants
   for (const [x, z] of [[hx + 0.15, -33], [hx + 0.15, 22], [px - 0.15, -8], [px - 0.15, 46], [hx + 0.15, -110], [px - 0.15, 120]]) place(L, hyd, x, H, z, 0, 0.2);
-  // benches in the park facing the sea, just east of the promenade
-  for (let z = -150; z <= 150; z += 9 + rnd() * 22) {
-    const x = promenadeX(z) + 2.8 + rnd() * 1.4;
-    if (palmNear(x, z, 1.8) || x > PARK.x1 - 1 || rnd() < 0.2) continue;
-    const rot = (rnd() - 0.5) * 0.2;
-    if (place(L, bench, x, H, z, rot, 'box')) BENCHES.push({ x, z, rot, seatY: H + 0.4575 });
+  // guard railings: the east kerb all along (a gap now and then), the west kerb either side
+  // of each crossing (the parking bays run between)
+  {
+    const crossings = [[CW.z0, CW.z1], ...LEGS];
+    const nearCrossing = (z) => crossings.some(([a, b]) => z > a - 2.6 && z < b + 2.6);
+    const rx = SIDEWALK_E.x0 + 0.25;
+    for (let z = -DISTRICT.zMax + 2; z < DISTRICT.zMax - 2; z += 4) {
+      if (nearCrossing(z) || ((z + 400) % 36) < 4) continue;
+      place(L, rail, rx, H, z, 0, 'box');
+    }
+    const wx = SIDEWALK_W.x1 - 0.25;
+    for (const [a, b] of crossings) {
+      for (const z of [a - 4.6, a - 8.6, b + 4.6, b + 8.6]) if (!crossStreetAt(z, 2)) place(L, rail, wx, H, z, 0, 'box');
+    }
   }
   // storm drains at both curbs, manholes in the lanes
   for (let z = -280; z <= 280; z += 45) {
@@ -933,7 +1011,7 @@ function districtFurniture(mat, G) {
       let q = zz;
       while (G.palmNear(x, q, 3.2)) q += 1.2;
       if (!within(q)) continue;
-      place(L, G.lamp, x, H, q, 0, 0.14);
+      placeLamp(L, G.lamp, x, H, q);
       if (rnd() < 0.55) placeKnock(L, 'bin', G.trash, x, H, q + 1.6 * (rnd() < 0.5 ? 1 : -1), 0, 0.3);
     }
   }
@@ -948,12 +1026,6 @@ function districtFurniture(mat, G) {
       const x = LANE_C[rnd() < 0.5 ? 0 : 1] + (rnd() - 0.5) * 1.2;
       place(L, G.manhole, x, roadHeight(x) + 0.002, s * z);
     }
-    for (let z = 155 + rnd() * 10; z <= 340; z += 9 + rnd() * 22) {
-      const x = promenadeX(s * z) + 2.8 + rnd() * 1.4;
-      if (G.palmNear(x, s * z, 1.8) || x > PARK.x1 - 1 || rnd() < 0.2) continue;
-      const rot = (rnd() - 0.5) * 0.2;
-      if (place(L, G.bench, x, H, s * z, rot, 'box')) BENCHES.push({ x, z: s * z, rot, seatY: H + 0.4575 });
-    }
     [160, 232, 268, 330].forEach((z, i) => place(L, G.hyd, i % 2 ? px - 0.15 : hx + 0.15, H, s * z, 0, 0.2));
   }
   // intersections
@@ -967,7 +1039,7 @@ function districtFurniture(mat, G) {
       blades.push({ x, z, name: c.name });
     }
     if (!c.signal) {
-      const x = CROSS.xw0 - 2.3, z = c.z + CROSS.hw + 0.6;
+      const x = CROSS.xw0 - 2.3, z = c.z - CROSS.hw - 0.6;   // (eastbound keeps left: the north kerb)
       place(L, signPostGeo(2.2), x, H, z, 0, 0.08);
       stops.push({ x, z });
       continue;
@@ -975,8 +1047,10 @@ function districtFurniture(mat, G) {
     // signal: a mast arm from each side of Ocean Drive, heads for both directions of
     // Ocean Drive and far-side heads for the cross street
     const [n, s2] = crossLegs(c.z);
-    const east = { x: SIDEWALK_E.x0 + 0.7, z: s2[1] + 1.2 }, west = { x: SIDEWALK_W.x1 - 0.7, z: n[0] - 1.2 };
-    for (const [p, armTo, facing] of [[east, LANE_C[1], 0], [west, LANE_C[0], Math.PI]]) {
+    // (traffic keeps left: the east lane runs south and stops north of the crossing, the west
+    // lane runs north and stops south of it)
+    const east = { x: SIDEWALK_E.x0 + 0.7, z: n[0] - 1.2 }, west = { x: SIDEWALK_W.x1 - 0.7, z: s2[1] + 1.2 };
+    for (const [p, armTo, facing] of [[east, LANE_C[1], Math.PI], [west, LANE_C[0], 0]]) {
       place(L, signalPoleGeo(p.x, armTo), p.x, H, p.z, 0, 0.18);
       place(L, signalHeadGeo(), armTo, H + 4.9, p.z, facing);
       lit.push({ x: armTo, y: H + 4.9, z: p.z, rot: facing, lamp: 2 });
@@ -993,7 +1067,7 @@ function districtFurniture(mat, G) {
       for (let x0 = -46 - (s > 0 ? 14 : 0); x0 > -236; x0 -= 28) {
         let x = x0;
         while (G.palmNear(x, z, 1.6)) x -= 1.2;
-        place(L, G.lamp, x, H, z, 0, 0.14);
+        placeLamp(L, G.lamp, x, H, z, s * Math.PI / 2);
         if (rnd() < 0.3) placeKnock(L, 'bin', G.trash, x - 1.6, H, z, 0, 0.3);
         else if (rnd() < 0.2) place(L, G.hyd, x - 2.2, H, z + s * 0.2, 0, 0.2);
       }
@@ -1058,7 +1132,8 @@ function signalHeadGeo() {
   // tunnel visor over each lamp, dark lenses (the lit one is a separate glowing disc)
   // (Miami-Dade: yellow visors lined black, and a thin yellow retroreflective border round
   // the backplate so the head reads against the sky and the palms)
-  const Y = 0xe3ac14, K = 0x0b0b0a, B = 0xf0c21c;
+  // (Hong Kong: black housings and visors, a white border round the backplate)
+  const Y = 0x1c1e1f, K = 0x0b0b0a, B = 0xe8e8e2;
   const parts = [box(0.34, 1.02, 0.22, 0, -0.51, 0, Y), box(0.6, 1.26, 0.025, 0, -0.63, -0.125, K)];
   for (const [w, h, x, y] of [[0.6, 0.035, 0, 0.6125], [0.6, 0.035, 0, -0.6125], [0.035, 1.26, 0.2825, 0], [0.035, 1.26, -0.2825, 0]]) {
     parts.push(box(w, h, 0.006, x, y - h / 2, -0.109, B));
@@ -1077,26 +1152,29 @@ function signalHeadGeo() {
 }
 
 // Street-name blades on the corner posts and stop signs, from their own small atlas.
+// Hong Kong street plate: white, a black border, Chinese over English
+export function hkPlate(c, y, W, RH, zh, en) {
+  c.fillStyle = '#f6f6f2'; c.fillRect(0, y, W, RH);
+  c.strokeStyle = '#151515'; c.lineWidth = RH * 0.05; c.strokeRect(RH * 0.06, y + RH * 0.06, W - RH * 0.12, RH - RH * 0.12);
+  c.fillStyle = '#111'; c.textAlign = 'center'; c.textBaseline = 'middle';
+  c.font = `700 ${RH * 0.4}px ${HK_FONT}`; c.fillText(zh, W / 2, y + RH * 0.36);
+  c.font = `700 ${RH * 0.24}px Arial, Helvetica, sans-serif`; c.fillText(en, W / 2, y + RH * 0.73, W - RH * 0.3);
+}
 function crossSigns(blades, stops) {
   const names = [...new Set(NEAR_CROSS.map((c) => c.name))];
-  const rows = names.length + 1, RH = 128;
+  const rows = names.length + 1, RH = 256;
   const [cv, c] = canvas(1024, RH * rows + 256);
-  const blade = (y, text) => {
-    c.fillStyle = '#1f6b45'; c.fillRect(0, y, 1024, RH);
-    c.strokeStyle = '#f2f2ea'; c.lineWidth = 6; c.strokeRect(8, y + 8, 1008, RH - 16);
-    c.fillStyle = '#f4f4ee'; c.font = 'bold 84px Arial, Helvetica, sans-serif'; c.textAlign = 'center'; c.textBaseline = 'middle';
-    c.fillText(text, 512, y + 66);
-  };
-  blade(0, 'OCEAN DR');
-  names.forEach((n, i) => blade(RH * (i + 1), n));
+  hkPlate(c, 0, 1024, RH, MAIN_ROAD.zh, MAIN_ROAD.name);
+  names.forEach((n, i) => hkPlate(c, RH * (i + 1), 1024, RH, NEAR_CROSS.find((q) => q.name === n).zh, n));
   // stop sign octagon (256 x 256) below the blades, aluminium back beside it
   const sy = RH * rows;
   c.fillStyle = '#f2f1ea';
   const oct = (r, x0, y0) => { c.beginPath(); for (let k = 0; k < 8; k++) { const a = Math.PI / 8 + (k * Math.PI) / 4; c.lineTo(x0 + Math.cos(a) * r, y0 + Math.sin(a) * r); } c.closePath(); };
   oct(126, 128, sy + 128); c.fill();
   c.fillStyle = '#b3241e'; oct(114, 128, sy + 128); c.fill();
-  c.fillStyle = '#f4f2ec'; c.font = 'bold 70px Arial, Helvetica, sans-serif'; c.textAlign = 'center'; c.textBaseline = 'middle';
-  c.fillText('STOP', 128, sy + 132);
+  c.fillStyle = '#f4f2ec'; c.textAlign = 'center'; c.textBaseline = 'middle';
+  c.font = `900 78px ${HK_FONT}`; c.fillText('停', 128, sy + 90);
+  c.font = 'bold 58px Arial, Helvetica, sans-serif'; c.fillText('STOP', 128, sy + 166);
   c.fillStyle = '#a4a7a8'; oct(126, 384, sy + 128); c.fill();
   const map = tex(cv);
   const Ht = cv.height;
@@ -1116,11 +1194,11 @@ function crossSigns(blades, stops) {
   const H = CURB_HEIGHT;
   for (const b of blades) {
     const top = H + 3.2, row = names.indexOf(b.name) + 1;
-    L.push(plate(0.9, 0.18, 0, v(0), 1, v(RH)).rotateY(Math.PI / 2).translate(b.x, top + 0.14, b.z));
-    L.push(plate(0.62, 0.18, 0.2, v(RH * row), 0.8, v(RH * (row + 1))).translate(b.x, top + 0.35, b.z));
+    L.push(plate(1.0, 0.25, 0, v(0), 1, v(RH)).rotateY(Math.PI / 2).translate(b.x, top + 0.17, b.z));
+    L.push(plate(1.0, 0.25, 0, v(RH * row), 1, v(RH * (row + 1))).translate(b.x, top + 0.45, b.z));
     M.push(new THREE.CylinderGeometry(0.045, 0.045, 0.06, 12).translate(b.x, top + 0.02, b.z));
-    M.push(new THREE.BoxGeometry(0.035, 0.42, 0.05).translate(b.x, top + 0.24, b.z));
-    M.push(new THREE.BoxGeometry(0.05, 0.42, 0.035).translate(b.x, top + 0.24, b.z));
+    M.push(new THREE.BoxGeometry(0.035, 0.6, 0.05).translate(b.x, top + 0.3, b.z));
+    M.push(new THREE.BoxGeometry(0.05, 0.6, 0.035).translate(b.x, top + 0.3, b.z));
   }
   const back = [0.25 + 0.0, v(sy + 256), 0.5, v(sy + 256), 0.25, v(sy), 0.5, v(sy)];
   for (const s of stops) {
@@ -1142,33 +1220,23 @@ function crossSigns(blades, stops) {
 // the crosswalk posts, regulation plates clamped to the front of their poles.
 function signs(posts, regs) {
   const [cv, c] = canvas(1024, 512);
-  const blade = (y, text) => {
-    c.fillStyle = '#1f6b45'; c.fillRect(0, y, 1024, 128);
-    c.strokeStyle = '#f2f2ea'; c.lineWidth = 6; c.strokeRect(8, y + 8, 1008, 112);
-    c.fillStyle = '#f4f4ee'; c.font = 'bold 84px Arial, Helvetica, sans-serif'; c.textAlign = 'center'; c.textBaseline = 'middle';
-    c.fillText(text, 512, y + 66);
-  };
-  blade(0, 'OCEAN DR');
-  blade(128, '9 ST');
-  // regulation sign (white): 256 wide x 256 tall at the bottom left
-  c.textBaseline = 'alphabetic';
-  c.fillStyle = '#f2f1ea'; c.fillRect(0, 256, 256, 256);
-  c.strokeStyle = '#b02a26'; c.lineWidth = 8; c.strokeRect(10, 266, 236, 236);
-  c.fillStyle = '#b02a26'; c.font = 'bold 44px Arial, sans-serif'; c.textAlign = 'center';
-  c.fillText('2 HOUR', 128, 318); c.fillText('PARKING', 128, 366);
-  c.fillStyle = '#222'; c.font = 'bold 30px Arial, sans-serif';
-  c.fillText('9AM - 6PM', 128, 420); c.fillText('PAY AT METER', 128, 462);
-  // pedestrian crossing (yellow-green diamond) at 256..512
-  c.fillStyle = '#c8d63a';
-  c.beginPath(); c.moveTo(384, 262); c.lineTo(506, 384); c.lineTo(384, 506); c.lineTo(262, 384); c.closePath(); c.fill();
-  c.strokeStyle = '#222'; c.lineWidth = 6; c.stroke();
-  c.fillStyle = '#222'; c.beginPath(); c.arc(384, 330, 14, 0, 6.28); c.fill();
-  c.lineWidth = 12; c.beginPath(); c.moveTo(384, 346); c.lineTo(380, 400); c.lineTo(360, 450); c.moveTo(380, 400); c.lineTo(404, 448); c.moveTo(356, 372); c.lineTo(408, 380); c.stroke();
-  // valet sign (512..768 x 256..512)
-  c.fillStyle = '#20302a'; c.fillRect(512, 256, 256, 256);
-  c.strokeStyle = '#d9c28a'; c.lineWidth = 6; c.strokeRect(522, 266, 236, 236);
-  c.fillStyle = '#efe6cc'; c.font = 'bold 58px Georgia, serif'; c.textAlign = 'center';
-  c.fillText('VALET', 640, 360); c.font = 'bold 34px Georgia, serif'; c.fillText('PARKING', 640, 420);
+  // (two 1024 x 128 plates: the main road and the district, squeezed 2:1 onto 4:1 plates)
+  hkPlate(c, 0, 1024, 128, MAIN_ROAD.zh, MAIN_ROAD.name);
+  hkPlate(c, 128, 1024, 128, '銅鑼灣', 'CAUSEWAY BAY');
+  // metered parking (blue, a white P) 256 x 256 at the bottom left
+  c.textBaseline = 'middle'; c.textAlign = 'center';
+  c.fillStyle = '#1d4f9c'; c.fillRect(0, 256, 256, 256);
+  c.strokeStyle = '#f2f2ee'; c.lineWidth = 8; c.strokeRect(10, 266, 236, 236);
+  c.fillStyle = '#f2f2ee'; c.font = 'bold 120px Arial, sans-serif'; c.fillText('P', 128, 350);
+  c.font = `700 30px ${HK_FONT}`; c.fillText('咪錶停車位', 128, 438);
+  c.font = 'bold 22px Arial, sans-serif'; c.fillText('METERED PARKING', 128, 476);
+  // pedestrian crossing: a blue square, a white triangle, the walking figure
+  c.fillStyle = '#1d4f9c'; c.fillRect(256, 256, 256, 256);
+  c.fillStyle = '#f2f2ee';
+  c.beginPath(); c.moveTo(384, 280); c.lineTo(492, 480); c.lineTo(276, 480); c.closePath(); c.fill();
+  c.fillStyle = '#111'; c.strokeStyle = '#111'; c.beginPath(); c.arc(384, 352, 13, 0, 6.28); c.fill();
+  c.lineWidth = 11; c.beginPath(); c.moveTo(384, 368); c.lineTo(380, 412); c.lineTo(362, 456); c.moveTo(380, 412); c.lineTo(402, 454); c.moveTo(360, 388); c.lineTo(406, 394); c.stroke();
+  c.fillRect(300, 462, 168, 6);
   // bare aluminium for the backs of plates (768..1024 x 256..512)
   c.fillStyle = '#a4a7a8'; c.fillRect(768, 256, 256, 256);
   const map = tex(cv);
@@ -1205,8 +1273,8 @@ function signs(posts, regs) {
   for (const [x, z] of posts) {
     // street-name blades stacked above the pole top in a slotted cap bracket, crossed
     const top = H + 3.2;
-    L.push(plate(0.9, 0.18, 0, 1, 1, 0.75, 'text').rotateY(Math.PI / 2).translate(x, top + 0.14, z));   // OCEAN DR, along the street
-    L.push(plate(0.6, 0.18, 0.2, 0.75, 0.8, 0.5, 'text').translate(x, top + 0.35, z));                  // 9 ST, across it
+    L.push(plate(1.0, 0.25, 0, 1, 1, 0.75, 'text').rotateY(Math.PI / 2).translate(x, top + 0.17, z));   // the main road, along the street
+    L.push(plate(1.0, 0.25, 0, 0.75, 1, 0.5, 'text').translate(x, top + 0.45, z));                      // the district, across it
     M.push(new THREE.CylinderGeometry(0.045, 0.045, 0.06, 12).translate(x, top + 0.02, z));
     M.push(new THREE.BoxGeometry(0.035, 0.42, 0.05).translate(x, top + 0.24, z));
     M.push(new THREE.BoxGeometry(0.05, 0.42, 0.035).translate(x, top + 0.24, z));
@@ -1214,8 +1282,6 @@ function signs(posts, regs) {
     mounted(0.6, 0.6, [0.25, 0.5, 0.5, 0], x < LANES.centerX ? Math.PI / 2 : -Math.PI / 2, x, H + 2.2, z);
   }
   for (const [x, z] of regs) mounted(0.45, 0.45, [0, 0.5, 0.25, 0], Math.PI / 2, x, H + 2.1, z);
-  // valet A-frame sign on the sidewalk (text on the outer faces)
-  for (const s of [-1, 1]) L.push(plate(0.55, 0.8, 0.5, 0.5, 0.75, 0).rotateX(s * 0.18).rotateY(Math.PI / 2 * (s > 0 ? 1 : -1)).translate(-25.4 + s * 0.07, H + 0.4, 24.3));
   const m = new THREE.Mesh(mergeGeometries(L), new THREE.MeshStandardMaterial({ map, roughness: 0.5, metalness: 0.1 }));
   m.castShadow = m.receiveShadow = true;
   const strip = (g) => { g = g.index ? g.toNonIndexed() : g; g.deleteAttribute('uv'); return g; };
@@ -1226,13 +1292,31 @@ function signs(posts, regs) {
   return g;
 }
 
+// the street lamps are lit at dusk: a warm glowing lens under each lantern, with a soft halo
+function lampLenses() {
+  const g = new THREE.BoxGeometry(0.6, 0.03, 0.24);
+  const m = new THREE.InstancedMesh(g, new THREE.MeshBasicMaterial({ color: new THREE.Color(0xffd9a0).multiplyScalar(3), fog: false }), LAMP_HEADS.length);
+  const halo = new THREE.SpriteMaterial({ map: haloTexture(), color: 0xffc27a, blending: THREE.AdditiveBlending, depthWrite: false, transparent: true, opacity: 0.55 });
+  const M4 = new THREE.Matrix4();
+  LAMP_HEADS.forEach((h, i) => {
+    M4.makeTranslation(h.x, h.y, h.z);
+    m.setMatrixAt(i, M4);
+    const sp = new THREE.Sprite(halo);
+    sp.position.set(h.x, h.y - 0.1, h.z);
+    sp.scale.setScalar(1.6);
+    m.add(sp);
+  });
+  m.name = 'lamp-lenses';
+  return m;
+}
+
 export function buildStreet(scene) {
   const group = new THREE.Group();
   group.name = 'street';
   const [walks, tactile, concrete] = sidewalks();
   const road = roadMesh();
   const furn = furniture();
-  group.add(road, crossRoadMesh(road.material), markings(), walks, tactile, curbs(concrete), ...furn);
+  group.add(road, crossRoadMesh(road.material), markings(), walks, tactile, curbs(concrete), ...furn, lampLenses());
   for (const m of furn) {
     if (!m.userData.cullBlock) continue;
     m.geometry.computeBoundingBox();

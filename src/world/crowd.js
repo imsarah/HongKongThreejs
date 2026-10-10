@@ -153,24 +153,26 @@ function outfit(rnd) {
 // cast: what each person does (tiers: 1 all, 2 medium+, 3 high only)
 function castList(benches, chairs, furniture) {
   const P = [];
-  const prom = (z0, z1) => makePath(sampled(z0, z1, promenadeX, 1), { half: 1.9 });
   let laneObs = furniture;
   const hotelWalk = (z0, z1) => makePath(hotelLane(z0, z1, laneObs), { half: 0.3 });
   const parkWalk = (z0, z1) => makePath(sampled(z0, z1, () => -12.1, 2), { half: 0.8 });
-  const beach = (z0, z1, x = 89.6) => makePath(sampled(z0, z1, (z) => x + 1.1 * Math.sin(z / 15) + 0.4 * Math.sin(z / 5.3 + 1), 1), { half: 3 });
-  // promenade strollers
-  P.push({ tier: 1, kind: 'walk', char: 'megan', clip: 'walk_casual_f', path: prom(-120, 110), s: 70, dir: 1, v: 1.25 });
-  P.push({ tier: 1, kind: 'walk', char: 'bryce', clip: 'walk_happy_m', path: prom(-150, 140), s: 150, dir: -1, v: 1.35 });
-  P.push({ tier: 2, kind: 'walk', char: 'elizabeth', clip: 'walk_texting_f', path: prom(-90, 130), s: 40, dir: -1, v: 1.05 });
-  P.push({ tier: 3, kind: 'walk', char: 'lewis', clip: 'walk_holding_object', path: prom(-60, 150), s: 120, dir: 1, v: 1.2 });
-  P.push({ tier: 3, kind: 'walk', char: 'sophie', clip: 'walk_feminine_f', path: prom(-150, 60), s: 30, dir: 1, v: 1.2 });
-  // joggers and skaters
-  P.push({ tier: 1, kind: 'jog', char: 'lewis', clip: 'jog', path: prom(-200, 200), s: 230, dir: -1, v: 2.9 });
-  P.push({ tier: 2, kind: 'jog', char: 'sophie', clip: 'run_f', path: prom(-180, 180), s: 60, dir: 1, v: 2.7 });
-  P.push({ tier: 1, kind: 'skate', char: 'megan', clip: 'skate', path: prom(-220, 220), s: 300, dir: 1, v: 4.0 });
-  P.push({ tier: 2, kind: 'skate', char: 'bryce', clip: 'skate', path: prom(-220, 220), s: 140, dir: -1, v: 4.4 });
+  // Causeway Bay: both sidewalks busy all along, people at every pace
+  const W = [
+    ['megan', 'walk_casual_f', 1.25], ['bryce', 'walk_happy_m', 1.35], ['elizabeth', 'walk_texting_f', 1.05],
+    ['lewis', 'walk_holding_object', 1.2], ['sophie', 'walk_feminine_f', 1.2], ['bryce', 'walk_casual_m', 1.3],
+    ['elizabeth', 'walk_briefcase_f', 1.4], ['lewis', 'walk_shopping_bag_m', 1.3], ['megan', 'walk_casual_f', 1.15],
+    ['sophie', 'walk_casual_f', 1.3],
+  ];
+  W.forEach(([char, clip, v], i) => {
+    const tier = i < 4 ? 1 : i < 7 ? 2 : 3;
+    const z0 = -180 + (i * 37) % 60, z1 = 160 - (i * 23) % 50;
+    P.push({ tier, kind: 'walk', char, clip, path: i % 2 ? parkWalk(z0, z1) : hotelWalk(z0, z1), s: 15 + i * 31, dir: i % 3 ? 1 : -1, v });
+  });
+  // someone in a hurry on each side
+  P.push({ tier: 2, kind: 'jog', char: 'lewis', clip: 'jog', path: parkWalk(-200, 200), s: 230, dir: -1, v: 2.6 });
+  P.push({ tier: 3, kind: 'jog', char: 'sophie', clip: 'run_f', path: parkWalk(-180, 180), s: 60, dir: 1, v: 2.5 });
   // benches near the start (sitting clips), cafe tables (a pair talking, one drinking)
-  const bs = benches.filter((b) => b.z > -60 && b.z < 70).sort((a, b) => Math.abs(a.z - 20) - Math.abs(b.z - 20));
+  const bs = benches.filter((b) => b.z > -60 && b.z < 70 && b.x < -10.5).sort((a, b) => Math.abs(a.z - 20) - Math.abs(b.z - 20));
   const sits = [['sophie', 'sit_idle_f', 1], ['bryce', 'sit_drinking', 1], ['lewis', 'sit_looking_around', 2], ['elizabeth', 'sit_fidget_feet', 3]];
   sits.forEach(([char, clip, tier], i) => { if (bs[i]) P.push({ tier, kind: 'sit', char, clip, seat: { x: bs[i].x + 0.03, y: bs[i].seatY, z: bs[i].z + (i % 2 ? 0.35 : -0.3), yaw: Math.PI / 2 + bs[i].rot, bench: true } }); });
   // cafe: chairs on the terraces within the first blocks, two at one table facing each other
@@ -186,26 +188,22 @@ function castList(benches, chairs, furniture) {
   }
   const lone = cs.find((c) => !pair.includes(c) && Math.abs(c.z - (pair[0]?.z ?? 0)) > 8);
   if (lone) P.push({ tier: 3, kind: 'sit', char: 'lewis', clip: 'sit_drinking', seat: { x: lone.x, y: lone.y + 0.45, z: lone.z, yaw: lone.rot, cafe: true } });
-  // (the sidewalk lanes keep clear of the people sat at the cafe tables: hips and knees)
   laneObs = [...furniture, ...P.filter((c) => c.seat?.cafe).map(({ seat: t }) => ({ x: t.x + Math.sin(t.yaw) * 0.15, z: t.z + Math.cos(t.yaw) * 0.15, r: 0.34 }))];
-  // sidewalks
   P.push({ tier: 1, kind: 'walk', char: 'bryce', clip: 'walk_casual_m', path: hotelWalk(-150, 150), s: 180, dir: -1, v: 1.3 });
   P.push({ tier: 2, kind: 'walk', char: 'elizabeth', clip: 'walk_briefcase_f', path: hotelWalk(-120, 70), s: 120, dir: 1, v: 1.4 });
   P.push({ tier: 3, kind: 'walk', char: 'lewis', clip: 'walk_shopping_bag_m', path: parkWalk(-150, 150), s: 100, dir: 1, v: 1.3 });
   // crosser: hotel sidewalk south to the mid-block crosswalk, over, north up the park side,
   // back over at the 10 ST south leg
   {
-    const zc = CROSSWALK_Z, leg = crossLegs(CROSS_STREETS.find((c) => c.name === '10 ST').z)[1], z10 = (leg[0] + leg[1]) / 2;
+    const zc = CROSSWALK_Z, leg = crossLegs(CROSS_STREETS.find((c) => c.name === 'PAK SHA ROAD').z)[1], z10 = (leg[0] + leg[1]) / 2;
     const xh = -26.4, xp = -12.3;
     const pts = [...hotelLane(z10, zc, laneObs), ...sampled(z10, zc, () => xp, 2).reverse()];
     P.push({ tier: 1, kind: 'walk', char: 'sophie', clip: 'walk_casual_f', path: makePath(pts, { closed: true, half: 0.7, cross: true }), s: 20, dir: 1, v: 1.3, crosser: true });
   }
-  // beach
-  P.push({ tier: 1, kind: 'walk', char: 'lewis', clip: 'walk_casual_m', path: beach(-60, 60), s: 50, dir: 1, v: 1.0 });
-  P.push({ tier: 2, kind: 'walk', char: 'megan', clip: 'walk_casual_f', path: beach(-170, -110, 88.4), s: 10, dir: 1, v: 1.05 });
-  // standing about: a phone call by the promenade, someone looking round on the sidewalk
-  P.push({ tier: 2, kind: 'stand', char: 'elizabeth', clip: 'idle_phone_talk_f', at: { x: promenadeX(-28) - 2.6, z: -28, yaw: 1.2 } });
+  // standing about: a phone call outside a shop, someone looking round at the signs
+  P.push({ tier: 2, kind: 'stand', char: 'elizabeth', clip: 'idle_phone_talk_f', at: { x: -10.9, z: -28, yaw: -1.6 } });
   P.push({ tier: 3, kind: 'stand', char: 'bryce', clip: 'idle_looking_around', at: { x: -12.6, z: 58, yaw: -2.2 } });
+  P.push({ tier: 1, kind: 'stand', char: 'sophie', clip: 'idle_phone_talk_f', at: { x: -29.2, z: 18, yaw: 1.5 } });
   return P;
 }
 
@@ -321,13 +319,7 @@ export function buildCrowd(scene, assets, { beach, hotels, walker = null, getCar
       if (S) { setOnPath(S, -32, -1); S.speed = S.v0; }
       for (const a of agents) if (a.path && a !== W && a !== J && a !== S) a.hidden = true;
     } else {
-      // as clear of the five harness views as the old cast: a jogger south of view 1, a beach
-      // stroller north of view 5, a far stroller up the beach; everyone else off stage
-      const J = byKind('jog', 0), B = agents.find((a) => a.kind === 'walk' && a.path?.half === 3), F = agents.filter((a) => a.kind === 'walk' && a.path?.half === 3)[1];
-      for (const a of agents) a.hidden = true;
-      if (J) { J.hidden = false; J.fixed = { x: promenadeX(85) + 0.65, z: 85, heading: Math.PI }; J.speed = J.v0; }
-      if (B) { B.hidden = false; B.fixed = { x: 88, z: -66, heading: 0 }; B.speed = B.v0; }
-      if (F) { F.hidden = false; F.fixed = { x: 88.2, z: -140, heading: 0 }; F.speed = F.v0; }
+      // Causeway Bay: the crowd stays in the frames, frozen where the paths put them
     }
   }
 

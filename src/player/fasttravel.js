@@ -13,9 +13,10 @@ const R_CLEAR = 0.38;                 // m: the walker's 0.3 m radius and a marg
 const MAX_WADE = 0.5;
 const FADE = 0.35;                    // s each way
 export const START = { x: -26, z: 40, heading: 342, pitch: 4 };   // main.js's first frame
-const Z11 = CROSS_STREETS.find((c) => c.name === '11 ST')?.z ?? -190;
+const Z11 = CROSS_STREETS.find((c) => c.signal)?.z ?? -190;
 // Ocean Drive's lanes: southbound by the hotels (sim yaw pi), northbound by the park (yaw 0)
-export const LANE = { south: { x: LANES.centerX - 1.75, yaw: Math.PI }, north: { x: LANES.centerX + 1.75, yaw: 0 } };
+// (traffic keeps left: southbound in the east lane, northbound in the west lane)
+export const LANE = { south: { x: LANES.centerX + 1.75, yaw: Math.PI }, north: { x: LANES.centerX - 1.75, yaw: 0 } };
 
 export const DESTINATIONS = [
   { key: '1', id: 'beach', name: 'Lifeguard Beach', road: false },
@@ -161,7 +162,7 @@ export function resolveRoad(id, ctx) {
     }
     case 'hotels': return { x: S.x, z: -124, yaw: S.yaw };
     case 'crossing': return { x: N.x, z: crossLegs(Z11)[1][1] + 9, yaw: N.yaw };
-    case 'hero': return ctx.riding === 'hero' ? { x: CAR.x, z: CAR.z, yaw: Math.PI } : { x: S.x, z: CAR.z - 8, yaw: S.yaw };
+    case 'hero': return ctx.riding === 'hero' ? { x: CAR.x, z: CAR.z, yaw: 0 } : { x: S.x, z: CAR.z - 8, yaw: S.yaw };
     default: return null;
   }
 }

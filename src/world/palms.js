@@ -108,7 +108,8 @@ function plan() {
 }
 const EXT = DISTRICT.zMax + 8;
 
-export const PALM_TREES = plan();
+// (Causeway Bay: no palms on the street; plan() is kept for reference)
+export const PALM_TREES = [];
 
 // Wind-rustle sound sources: one per ~45 m of each row near the block, ~100 m beyond it
 // through the district.

@@ -10,6 +10,7 @@ import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
 import { CAR, roadHeight, CROSS, CROSS_STREETS, crossRoadHeight, DISTRICT } from './layout.js';
 import { OPEN_WORLD } from '../vehicles/specs.js';
 import { extentBounds } from './extent.js';
+import { addPlateUvs, plateMaterial, PLATE_COUNT } from './hk-plates.js';
 import { registerLodHook, LOD } from './lod.js';
 import { QUALITY } from '../quality.js';
 import { staticCull } from '../renderer/batched-cull.js';
@@ -463,7 +464,8 @@ function makeMaterials(env, sky, vinylNor, carpetNor) {
     // (the traffic's own lamps: its brake lights are lit per car)
     makeTail: () => lampMaterial(env, 0x9a1016, 0x2a0304),
     makeBrake3: () => lampMaterial(env, 0x7a0c10, 0x140102),
-    plate: std({ color: 0xe6e2d2, roughness: 0.55 }),
+    // (Hong Kong plates: yellow at the rear, white at the front; world/hk-plates.js)
+    plate: plateMaterial({ envMap: sky }, -1),
     interior: std({ color: 0x3a3b3e, roughness: 0.7, envMapIntensity: 0.9 }),
     seat: std({ color: 0x2a2b2e, roughness: 0.62, envMapIntensity: 0.9 }),
   };
@@ -570,6 +572,13 @@ function lighterGlass(root, M, env) {
     lite = on;
     for (const [o, dark, light] of panes) o.material = on ? light : dark;
   };
+}
+
+// a moving car's own plate number (the shared plate material picks one from the position)
+let plateN = 0;
+function ownPlate(root, M, index = plateN++ % PLATE_COUNT) {
+  let own = null;
+  root.traverse((o) => { if (o.isMesh && o.material === M.plate) o.material = (own ??= plateMaterial({ envMap: M.plate.envMap }, index)); });
 }
 
 function applyMaterials(root, M, paint, paint2) {
@@ -791,7 +800,7 @@ function collectKinds(gltf) {
       root.traverse((o) => {
         if (!o.isMesh) return;
         const name = o.material.name;
-        const keep = name === 'tyre' ? ['position', 'normal', 'color'] : ['position', 'normal'];
+        const keep = name === 'tyre' ? ['position', 'normal', 'color'] : name === 'plate' ? ['position', 'normal', 'uv'] : ['position', 'normal'];
         (byMat[name] ??= []).push(bake(o, root, keep));
       });
       lods.push(byMat);
@@ -809,7 +818,7 @@ function parkedLayout(kinds) {
   const spots = [];
   const kindOf = (k) => kinds[k] ? k : Object.keys(kinds)[0];
   for (const [z, col, k] of [[-1.5, 0xb9bcbf, 'sedan'], [-24, 0x1f2c44, 'suv'], [-31.5, 0x8a1e1e, 'hatch'], [58, 0xe4e4e0, 'pickup']]) {
-    spots.push({ kind: kindOf(k), x: CAR.x + 0.05, z, yaw: 0, color: col, fixed: true });
+    spots.push({ kind: kindOf(k), x: CAR.x + 0.05, z, yaw: Math.PI, color: col, fixed: true });
   }
   const taken = [-1.5, -24, -31.5, 58];
   const row = (z0, z1, seed, clip, avoid) => {
@@ -829,7 +838,7 @@ function parkedLayout(kinds) {
       if (avoid && (Math.abs(zc - CAR.z) < 6.5 || Math.abs(zc - (-10)) < 6.5 || (zc > 22 && zc < 44) || taken.some((t) => Math.abs(zc - t) < 5.6))) continue;
       if (skip) continue;
       const x = CAR.x + 0.05 + (rnd() - 0.5) * 0.3;
-      const yaw = (rnd() - 0.5) * 0.09;
+      const yaw = Math.PI + (rnd() - 0.5) * 0.09;   // (keep left: the west kerb faces north)
       const color = PAINTS[Math.floor(rnd() * PAINTS.length)];
       if (blockedBay(zc, L / 2)) continue;
       spots.push({ kind, x, z: zc, yaw, color });
@@ -859,7 +868,7 @@ function parkedLayout(kinds) {
     return deck.pop();
   };
   // cross streets: a parked row along each curb out past the hotels, facing the way the
-  // near lane runs (westbound on the north side)
+  // near lane runs (keep left: eastbound on the north side)
   {
     const rx = (() => { let a = 5151; return () => ((a = (a * 1664525 + 1013904223) >>> 0) / 4294967296); })();
     const types = ['sedan', 'hatch', 'suv', 'crossover', 'wagon', 'pickup', 'coupe', 'sedan'].map(kindOf);
@@ -872,7 +881,7 @@ function parkedLayout(kinds) {
         const L = kinds[kind].L, xc = x - L / 2;
         x -= L + 0.9 + rx() * 1.8;
         if (rx() < 0.18) continue;
-        spots.push({ kind, x: xc, z: c.z + sd * (CROSS.hw - 1.15 + (rx() - 0.5) * 0.2), yaw: sd * Math.PI / 2 + (rx() - 0.5) * 0.06, cross: true });
+        spots.push({ kind, x: xc, z: c.z + sd * (CROSS.hw - 1.15 + (rx() - 0.5) * 0.2), yaw: -sd * Math.PI / 2 + (rx() - 0.5) * 0.06, cross: true });
       }
     }
   }
@@ -1240,6 +1249,7 @@ function trafficKit(scene, gltf, M, env, pool, probe) {
         } else {
           c = skipWhenHidden(gltf.scene.getObjectByName(n).clone(true));
           applyMaterials(c, M, paint, paint);
+          ownPlate(c, M);
           c.traverse((o) => {
             if (!o.isMesh) return;
             o.castShadow = false;
@@ -1398,15 +1408,18 @@ export async function buildCarsGlb(scene, renderer) {
   if (new URLSearchParams(location.search).get('cars') === 'procedural') return buildCars(scene);
   const [heroGltf, parkedGltf, vinylNor, carpetNor] = await preloadCars();
   if (!heroGltf) return buildCars(scene);
+  addPlateUvs(heroGltf.scene);
+  addPlateUvs(parkedGltf?.scene);
   const probe = createProbe(renderer, scene);
   probe.capture(CAR.z, true);
   probe.z = null;
   const env = probe.texture;
   const M = makeMaterials(env, scene.environment, vinylNor, carpetNor);
   const paint2 = paintMaterial(env, HERO_PAINT2, 'hero2', LACQUER);
-  // hero: parked at the west curb, facing south (the direction of the west lane), top down
+  // hero: parked at the west curb, facing north (the direction of the west lane), top down
   const hero = heroInstance(heroGltf, paintMaterial(env, HERO_PAINT, 'hero', LACQUER), paint2, M);
-  seat(hero.car, CAR.x, CAR.z, 0);
+  seat(hero.car, CAR.x, CAR.z, Math.PI);
+  ownPlate(hero.car, M, 5);
   scene.add(hero.car);
   const mirror = rearMirror(renderer, scene, hero);
   // (hero: the drivable car replaces this box with its own moving circles)
@@ -1419,6 +1432,7 @@ export async function buildCarsGlb(scene, renderer) {
     const m = heroInstance(heroGltf, paintMaterial(env, c, 'mover' + i, LACQUER), paintMaterial(env, c2, 'mover2-' + i, LACQUER), M);
     const tail = M.makeTail();
     m.car.traverse((o) => { if (o.isMesh) { o.castShadow = false; if (o.material === M.tail) o.material = tail; } });
+    ownPlate(m.car, M, 6 + i);
     m.car.visible = false;
     scene.add(m.car);
     return { ...m, tail, id: null, spin: 0 };
@@ -1461,7 +1475,7 @@ export async function buildCarsGlb(scene, renderer) {
     traffic: kit,
     // the drivable hero (vehicles/index.js): start pose in sim terms, pose from the sim, eye
     drive: {
-      pose: { x: CAR.x, z: CAR.z, yaw: Math.PI },
+      pose: { x: CAR.x, z: CAR.z, yaw: 0 },
       apply: (v) => { heroDriven = !!v.ridden; poseHero(hero, v); },
       eye: (out) => hero.car.userData.eyeAnchor.getWorldPosition(out),
       // the eye's frame is the sprung body's (squat, dive, roll and shake move the view

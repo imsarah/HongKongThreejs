@@ -10,12 +10,12 @@
 // Each rectangle marks which of its sides are soft: the open ends of a road, where the
 // tapers apply. The others are hard (a facade row, the sea) or interior (an overlap with
 // another rectangle) and only bound movement.
-import { HOTEL, CROSS, CROSS_STREETS, LANES } from './layout.js';
+import { HOTEL, EAST, CROSS, CROSS_STREETS, LANES } from './layout.js';
 
 export const EDGE_SOFT = { walker: 14, vehicle: 25 };
 
 function rects({ zMax, crossWest }) {
-  const out = [{ x0: HOTEL.patioX + 0.2, x1: 110, z0: -zMax, z1: zMax, soft: { z0: true, z1: true }, name: 'ocean-drive' }];
+  const out = [{ x0: HOTEL.patioX + 0.2, x1: EAST.frontX - 0.2, z0: -zMax, z1: zMax, soft: { z0: true, z1: true }, name: 'main-road' }];
   // the cross-street rectangles reach well into Ocean Drive so a car turning in is always
   // wholly inside one of them
   for (const c of CROSS_STREETS) {

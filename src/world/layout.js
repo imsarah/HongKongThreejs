@@ -1,14 +1,16 @@
 // Shared layout constants (meters, y up).
-// +x = east (ocean), -x = west (hotels), -z = north, +z = south.
+// Causeway Bay: a two-lane street with buildings on both sides.
+// +x = east, -x = west, -z = north, +z = south. Traffic keeps left (Hong Kong).
 
 export const BLOCK = { zMin: -70, zMax: 70 };
 // How far the street / beach visually continue north and south of the block.
 export const WORLD_Z = 2500;
 
+// The west building row (the name is Ocean Drive's: the hotels stood here).
 export const HOTEL = {
-  frontX: -30,        // main facade line
-  maxSetback: 3,      // some facades step back up to 3 m
-  patioX: -28,        // porches / patios may come forward to here
+  frontX: -30,        // shopfront line
+  maxSetback: 0,
+  patioX: -30,        // (no patios: the sidewalk runs to the shops)
   backX: -55,
 };
 
@@ -17,13 +19,17 @@ export const CURB_HEIGHT = 0.15;
 export const SIDEWALK_W = { x0: -30, x1: -24 };   // hotel-side sidewalk
 export const PARKING = { x0: -24, x1: -21.5 };
 export const LANES = { x0: -21.5, x1: -14.5, centerX: -18 };
-export const SIDEWALK_E = { x0: -14.5, x1: -10 }; // park-side sidewalk
-export const PARK = { x0: -10, x1: 12, promenadeX: 0, wallX: 12 };
-export const SAND = { x0: 12, waterline: 90 };
+export const SIDEWALK_E = { x0: -14.5, x1: -10 }; // east sidewalk
+// The east building row: shopfronts at x0, the rear wall at backX.
+export const EAST = { frontX: -10, backX: 16 };
+// (no park, beach or sea in Causeway Bay: the old constants stay, out of reach, for the
+// code that still tests against them)
+export const PARK = { x0: -10, x1: -10, promenadeX: -1e4, wallX: -10 };
+export const SAND = { x0: 5000, waterline: 5090 };
 // Mean sea level sits 1 m below the street (park/beach crest are ~1.5 m above the
 // water), so the sea reads as a band below the horizon from the park.
 export const SEA_LEVEL = -1.0;
-export const OCEAN = { x0: 86, y: SEA_LEVEL };
+export const OCEAN = { x0: 5086, y: SEA_LEVEL };
 
 export const CAR = { x: -22.75, z: 8 };
 export const CROSSWALK_Z = -10;
@@ -36,25 +42,25 @@ export function roadHeight(x) {
   const t = Math.min(1, Math.abs(x - c) / w);
   return ROAD_CROWN * (1 - t * t);
 }
-export const TOWER = { x: 45, z: 5, deckHeight: 2.7 };
-// Lifeguard towers along the extended beach (the first is the original one).
-export const TOWERS = [
-  TOWER,
-  { x: 45, z: -200, deckHeight: 2.7, palette: 'lime' },
-  { x: 45, z: 200, deckHeight: 2.7, palette: 'sunset' },
-];
+// (no lifeguard towers in the city)
+export const TOWER = { x: 5045, z: 5, deckHeight: 2.7 };
+export const TOWERS = [];
 
 // The walkable, fully detailed district: the original block plus 2-3 blocks each way.
 export const DISTRICT = { zMin: -340, zMax: 340 };
 
-// Cross streets meeting Ocean Drive from the west (T intersections; the park is east).
+// Cross streets meeting the main road from the west (T intersections; the park is east).
 // hw: roadway half width, gap: half the gap between the hotel rows, R: curb-return
 // radius, xw0..xw1: the crosswalk over the cross street along the hotel sidewalk.
+// The main road's name, on the plates.
+export const MAIN_ROAD = { name: 'HENNESSY ROAD', zh: '軒尼詩道' };
 export const CROSS = { hw: 5.5, gap: 9, R: 1.8, xw0: -29.6, xw1: -26.0, rampRun: 1.3, crown: 0.06 };
 export const CROSS_STREETS = [
   ...[-850, -740, -630, -520, -410].map((z) => ({ z, far: true })),
-  { z: -300, name: '12 ST' }, { z: -190, name: '11 ST', signal: true }, { z: -79, name: '10 ST' },
-  { z: 79, name: '8 ST' }, { z: 190, name: '7 ST' }, { z: 300, name: '6 ST' },
+  // (Causeway Bay street names, on the HK plates: Chinese over English)
+  { z: -300, name: 'PERCIVAL STREET', zh: '波斯富街' }, { z: -190, name: 'LEE GARDEN ROAD', zh: '利園山道', signal: true },
+  { z: -79, name: 'PAK SHA ROAD', zh: '白沙道' },
+  { z: 79, name: 'KAI CHIU ROAD', zh: '啟超道' }, { z: 190, name: 'YUN PING ROAD', zh: '恩平道' }, { z: 300, name: 'SUGAR STREET', zh: '糖街' },
   ...[410, 520, 630, 740, 850].map((z) => ({ z, far: true })),
 ];
 // Ocean Drive crosswalk legs north / south of a cross street: [z0, z1]
@@ -91,7 +97,8 @@ function crossGround(x, z) {
 export const EYE_HEIGHT = 1.7;
 
 // Sun: compass azimuth (0 = north, 90 = east) and elevation above horizon.
-export const SUN = { azimuthDeg: 100, elevationDeg: 7 };
+// Causeway Bay at dusk: the sun low in the west-north-west, shining down the cross streets.
+export const SUN = { azimuthDeg: 290, elevationDeg: 10 };
 
 export function compassToDir(azimuthDeg, elevationDeg, target) {
   const az = (azimuthDeg * Math.PI) / 180;
@@ -146,14 +153,13 @@ function smooth(a, b, v) {
 export function groundHeight(x, z) {
   if (x < SIDEWALK_W.x1) return crossGround(x, z) ?? CURB_HEIGHT;
   if (x < LANES.x1) return roadHeight(x);
-  if (x < SAND.x0) return CURB_HEIGHT;
-  return sandHeight(x) + sandDetail(x, z);   // (under the sea: the seabed you wade on)
+  return CURB_HEIGHT;   // the east sidewalk and the shops behind it
 }
 
 // Vehicle beach ramps through the seawall (lifeguard-truck style), clear of the access
 // steps, the towers and the park palms on the approach: a concrete grade from the park to
 // the sand crest. hw: half width of the running surface (the cheek walls stand just outside it).
-export const RAMPS = [{ z: -95, hw: 2.6 }, { z: 112, hw: 2.6 }];
+export const RAMPS = [];
 export const RAMP_X = { x0: 8.5, x1: 12.8 };
 export function rampAt(z, pad = 0) {
   for (const r of RAMPS) if (Math.abs(z - r.z) < r.hw + pad) return r;
@@ -176,7 +182,8 @@ export function groundHeightOpen(x, z) {
 // Fine ride bumps (m) on the park lawn and the promenade pavers: a cheap sum of sines like
 // sandDetail(). Zero on the road, sidewalks, ramps and sand.
 export function surfaceNoise(x, z) {
-  if (x < PARK.x0 + 0.3 || x >= SAND.x0 - 0.3 || rampAt(z, 0.3) && x > RAMP_X.x0 - 0.3) return 0;
+  // (the old park lawn and promenade pavers: no such surface in the city)
+  if (x < SAND.x0 - 0.3) return 0;
   const pz = PARK.promenadeX + 2.6 * Math.sin(z / 19) + 1.2 * Math.sin(z / 7.3);
   if (Math.abs(x - pz) < 2.2 || x > PARK.x1 - 1.2) {
     // pavers: a fine joint rumble

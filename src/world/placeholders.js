@@ -149,52 +149,7 @@ function buildGround(group) {
 
   // (street, curbs and sidewalks: street.js)
 
-  // Park lawn.
-  group.add(mesh(slab(PARK.x0, PARK.wallX, -0.3, CURB_HEIGHT, -Z, Z, 7), grass));
-
-  // Serpentine promenade.
-  {
-    const pts = [], idx = [], uvs = [];
-    const zs = 600, n = 600, w = 2.2;
-    for (let i = 0; i <= n; i++) {
-      const z = -zs + (i / n) * zs * 2;
-      const x = PARK.promenadeX + 2.6 * Math.sin(z / 19) + 1.2 * Math.sin(z / 7.3);
-      pts.push(x - w, CURB_HEIGHT + 0.02, z, x + w, CURB_HEIGHT + 0.02, z);
-      uvs.push((x - w) / 3, z / 3, (x + w) / 3, z / 3);
-      if (i < n) { const a = i * 2; idx.push(a, a + 2, a + 1, a + 1, a + 2, a + 3); }
-    }
-    const g = new THREE.BufferGeometry();
-    g.setAttribute('position', new THREE.Float32BufferAttribute(pts, 3));
-    g.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
-    g.setIndex(idx);
-    g.computeVertexNormals();
-    const pave = new THREE.MeshStandardMaterial({ map: concreteTex, color: 0xf2dcc8, roughness: 0.85 });
-    group.add(mesh(g, pave));
-  }
-
-  // Low coral-stone wall between park and sand.
-  // (front faces into the shadow map: with the default back faces, the wall's own west
-  // face sits at the grass depth and leaked a lit line along its foot)
-  // (pitted coral limestone, pale: its shaded park-side face must not read as a black band)
-  const coralTex = coralStoneTexture();
-  const coral = new THREE.MeshStandardMaterial({ map: coralTex, color: 0xf2e6cf, roughness: 0.95, shadowSide: THREE.FrontSide });
-  coral.onBeforeCompile = (s) => {
-    s.fragmentShader = s.fragmentShader.replace('#include <aomap_fragment>', `#include <aomap_fragment>
-      reflectedLight.indirectDiffuse *= 2.2;`);
-  };
-  coral.customProgramCacheKey = () => 'coral-wall-v3';
-  const cap = new THREE.MeshStandardMaterial({ map: coralTex, color: 0xcfc2aa, roughness: 0.9, shadowSide: THREE.FrontSide });
-  // (texture covers 2.4 m: coursed blocks 0.6 x 0.3 m)
-  // (open world: cut where the vehicle ramps pass through; beach.js builds them)
-  const runs = OPEN_WORLD
-    ? [-Z, ...RAMPS.flatMap((r) => [r.z - r.hw - 0.2, r.z + r.hw + 0.2]), Z].reduce((o, z, i, a) => (i % 2 ? o : [...o, [z, a[i + 1]]]), [])
-    : [[-Z, Z]];
-  for (const [z0, z1] of runs) {
-    group.add(mesh(slab(PARK.wallX - 0.25, PARK.wallX + 0.35, 0, 0.6, z0, z1, 2.4), coral, { cast: true }));
-    group.add(mesh(slab(PARK.wallX - 0.3, PARK.wallX + 0.4, 0.6, 0.68, z0, z1, 2.4), cap, { cast: true }));
-  }
-
-  // (sand, swash and the lifeguard tower: beach.js)
+  // (Causeway Bay: no park, promenade or seawall; the east sidewalk runs to the shops)
 }
 
 // Soft blob contact shadows (baked AO stand-in): transparent black gradient decals.

@@ -7,7 +7,8 @@
 // stops for anyone on one or stepping off the curb onto it. The 11 ST signal cycles and
 // cars obey it (a yellow is run only when stopping would be too hard).
 //
-// The lanes form one loop: southbound (x -19.75, +z) and northbound (x -16.25, -z), joined
+// Traffic keeps left (Hong Kong). The lanes form one loop: northbound (x -19.75, -z) and
+// southbound (x -16.25, +z), joined
 // out of sight beyond the district ends, where a car leaving one lane re-enters the other
 // (with a new model and colour - never the model and colour of the car it follows - once the
 // lane's next gap has opened behind the last car in, and only far from the viewer).
@@ -16,7 +17,7 @@
 // northbound, `len` its length.
 import { LANES, CROSSWALK_Z, CROSS_STREETS, crossLegs, SIDEWALK_W, SIDEWALK_E } from './layout.js';
 
-export const LANE_X = { 1: LANES.centerX - 1.75, [-1]: LANES.centerX + 1.75 };
+export const LANE_X = { 1: LANES.centerX + 1.75, [-1]: LANES.centerX - 1.75 };
 export const END_Z = 460;             // loop ends: re-entry beyond the district, out of sight
 export const LANE_HALF = 1.15;        // half width of a car's swept path (for obstacles)
 export const IDM = { a: 1.0, b: 1.8, T: 1.5, s0: 2.4, s0Stop: 0.7, s0Obst: 2.2, delta: 4 };
@@ -104,7 +105,7 @@ export function createTrafficSim({ count = 4, seed = 11, pickModel = () => ({ mo
   function makeCar(dir, z, v, prev = null, follow = false) {
     const m = pickModel(rnd, prev);
     return {
-      id: ++ids, dir, z, x: LANE_X[dir], v, v0: desired(follow ? prev : null), a: 0, len: m.len, model: m.model, classic: !!m.classic, color: m.color,
+      id: ++ids, dir, z, x: LANE_X[dir], v, v0: desired(follow ? prev : null), a: 0, len: m.len, model: m.model, classic: !!m.classic, color: m.color, taxi: !!m.taxi,
       braking: false, brakeT: 0, reason: null, blockedT: 0, stunT: 0, honk: 0, honked: false, holdT: 0, hidden: false, respawns: 0,
       xOff: 0, xRate: 0, pass: null, startleT: 0, honkAnim: 0,
       // (people.js / audio compatibility: the old audio car's fields)

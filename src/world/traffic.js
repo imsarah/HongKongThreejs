@@ -23,6 +23,30 @@ const CIRCLES = [-1.8, -0.9, 0, 0.9, 1.8];
 // still ~15x the tail)
 const TAIL = { run: [0x5a0304, 1], brake: [0xff0010, 1.55] };
 const STOP3 = { run: [0x140102, 1], brake: [0xff0010, 1.55] };
+const TAXI_RED = 0xb3121b;
+
+// the taxi roof sign: a white box lettered TAXI on both long faces, lit from inside
+let taxiSignGeo = null, taxiSignMat = null;
+function taxiSign() {
+  if (!taxiSignGeo) {
+    const cv = document.createElement('canvas');
+    cv.width = 256; cv.height = 64;
+    const g = cv.getContext('2d');
+    g.fillStyle = '#f4f2ea'; g.fillRect(0, 0, 256, 64);
+    g.fillStyle = '#c4141c'; g.font = 'bold 50px Arial, Helvetica, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
+    g.fillText('TAXI', 128, 35);
+    const t = new THREE.CanvasTexture(cv);
+    t.colorSpace = THREE.SRGBColorSpace;
+    taxiSignMat = new THREE.MeshStandardMaterial({ map: t, emissiveMap: t, emissive: 0xffffff, emissiveIntensity: 0.7, roughness: 0.4 });
+    // (the letters on the sides: the box's +x / -x faces carry the map; the rest is white)
+    taxiSignGeo = new THREE.BoxGeometry(0.16, 0.17, 0.52);
+    const uv = taxiSignGeo.attributes.uv;
+    for (let i = 8; i < 24; i++) uv.setXY(i, 0.02, 0.5);   // top, bottom, front, back: plain white
+  }
+  const m = new THREE.Mesh(taxiSignGeo, taxiSignMat);
+  m.castShadow = false;
+  return m;
+}
 
 export function buildTraffic(scene, { kit, shot = false, seed = 11 } = {}) {
   const colliders = [];   // live circles, filled per slot below
@@ -38,9 +62,13 @@ export function buildTraffic(scene, { kit, shot = false, seed = 11 } = {}) {
     classicFree: () => kit.classics.length - onRoad(), classicOnRoad: onRoad,
   });
   const pickModern = createPicker({ kinds: kit.kinds, lens: kit.lens, paints: kit.paints });
+  // Hong Kong: about a third of the traffic is red taxis (the sedan body, red paint, the lit
+  // TAXI sign on the roof)
+  const taxiKind = kit.kinds.includes('sedan') ? 'sedan' : null;
   const pickModel = (rnd, prev) => {
     const m = picker(rnd, prev);
     if (!simCars && m.classic) initClassics++;
+    if (taxiKind && !m.classic && rnd() < 0.35) return { model: taxiKind, len: kit.lens[taxiKind] + 0.1, color: TAXI_RED, taxi: true };
     return m;
   };
   const sim = createTrafficSim({ count: COUNT, seed, pickModel });
@@ -60,7 +88,15 @@ export function buildTraffic(scene, { kit, shot = false, seed = 11 } = {}) {
   const all = [];
   const take = (kind) => {
     let I = (pools[kind] ??= []).pop();
-    if (!I) { I = kit.makeModern(kind); all.push(I); attach(I); }
+    if (!I) {
+      I = kit.makeModern(kind); all.push(I); attach(I);
+      // the roof sign, hidden unless the car is a taxi
+      const box = new THREE.Box3().setFromObject(I.levels[0]);
+      I.taxi = taxiSign();
+      I.taxi.position.set(0, box.max.y + 0.085, (box.min.z + box.max.z) / 2 - 0.15);
+      I.taxi.visible = false;
+      I.root.add(I.taxi);
+    }
     return I;
   };
   const classicInst = new Map(kit.classics.map((m) => [m, {
@@ -99,6 +135,7 @@ export function buildTraffic(scene, { kit, shot = false, seed = 11 } = {}) {
     if (!s.inst) {
       s.inst = take(c.model);
       s.inst.paint.color.setHex(c.color ?? 0xb9bcbf);
+      if (s.inst.taxi) s.inst.taxi.visible = !!c.taxi;
       // (an instance whose driver got out when the player took the car: a new one)
       attach(s.inst);
     }

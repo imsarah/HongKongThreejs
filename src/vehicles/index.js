@@ -27,7 +27,7 @@ import { createSpray, createWake, P_WATER, P_SAND, P_SPARK, P_GRASS, P_SMOKE, P_
 import { createDamage, DENT_SPEED } from './damage.js';
 
 export const PARKED = {
-  bike: { x: 7.5, z: -26.5, yaw: -0.17 },
+  bike: { x: -11.4, z: -26.5, yaw: 0.05 },   // (on the east sidewalk, by the shops)
   atv: { x: TOWER.x + 1.2, z: TOWER.z + 4.8, yaw: 0.35 - Math.PI },
 };
 const REACH = { bike: 2.5, atv: 2.9 };   // m to the nearest collider circle centre
@@ -74,7 +74,8 @@ export function createVehicles(scene, {
     ...(LOW ? { maxSubsteps: 8 } : {}),
   };
   const list = [];
-  for (const kind of ['bike', 'atv']) {
+  // (Causeway Bay: the bike; no lifeguard ATV in the city)
+  for (const kind of ['bike']) {
     const m = kind === 'bike' ? buildBike() : buildAtv();
     const pose = { ...PARKED[kind] };
     let v = createVehicle(kind, pose, world);
@@ -106,7 +107,7 @@ export function createVehicles(scene, {
   const wakeList = [];
   const skids = shot ? null : createSkids(scene);
   const chase = createChaseCamera();
-  const hud = shot ? null : createHud({ units: new URLSearchParams(globalThis.location?.search ?? '').get('units') === 'kmh' ? 'kmh' : 'mph' });
+  const hud = shot ? null : createHud({ units: new URLSearchParams(globalThis.location?.search ?? '').get('units') === 'mph' ? 'mph' : 'kmh' });
   // parked modern cars that can be driven: the fleet's spots, and each kind's door (the
   // driver's hips along the body, sim local z) and half width
   const drivable = OPEN_WORLD && !shot && fleet?.take && kit?.makeDrivable ? fleet.cars : [];
@@ -390,10 +391,11 @@ export function createVehicles(scene, {
   // back on the nearest road, at rest, engine running (R, or stranded outside the world)
   function roadPoint(x, z) {
     const c = x < -26 ? crossStreetAt(z) : null;
-    if (c && !c.far) return { x: THREE.MathUtils.clamp(x, -84, -32), z: c.z + CROSS.hw * 0.45, yaw: -Math.PI / 2 };
+    // (traffic keeps left: eastbound on the north half, northbound in the west lane)
+    if (c && !c.far) return { x: THREE.MathUtils.clamp(x, -84, -32), z: c.z - CROSS.hw * 0.45, yaw: -Math.PI / 2 };
     const b = extentBounds(TIER);
     const zc = THREE.MathUtils.clamp(z, b.z0 + 30, b.z1 - 30);
-    return x < -18 ? { x: -19.75, z: zc, yaw: Math.PI } : { x: -16.25, z: zc, yaw: 0 };
+    return x < -18 ? { x: -19.75, z: zc, yaw: 0 } : { x: -16.25, z: zc, yaw: Math.PI };
   }
   function recover(force = false, immediate = false) {
     if (!rider || (!force && clock - lastRecover < 5)) return false;

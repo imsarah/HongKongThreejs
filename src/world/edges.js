@@ -92,7 +92,7 @@ export function edgeKinds(furnitureMat) {
 export function edgeProps(tier = 'high') {
   const out = [];
   const rects = (EXTENT[tier] ?? EXTENT.high).rects;
-  const od = rects.find((r) => r.name === 'ocean-drive');
+  const od = rects.find((r) => r.name === 'main-road');
   if (od) {
     for (const s of [-1, 1]) {
       if (!(s < 0 ? od.soft.z0 : od.soft.z1)) continue;

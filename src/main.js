@@ -2,20 +2,16 @@ import * as THREE from 'three';
 import { createSky } from './sky.js';
 import { createPost } from './renderer/post.js';
 import { buildPlaceholders } from './world/placeholders.js';
-import { buildHotels } from './world/hotels.js';
-import { buildPalms, PALM_TREES } from './world/palms.js';
+import { buildHkBuildings } from './world/hk-buildings.js'; // Causeway Bay frontage, both sides
 import { buildStreet, STREET_COLLIDERS, KNOCKABLES } from './world/street.js';
 import { createDynProps } from './world/props-dyn.js';
 import { edgeKinds, edgeProps } from './world/edges.js';
 import { buildCarsGlb, preloadCars, mirrorHide } from './world/cars-glb.js'; // Blender-modelled cars (procedural fallback)
-import { createOcean } from './world/ocean.js';
-import { createSurf } from './world/surf.js';
-import { buildBeach } from './world/beach.js';
+import { buildGround } from './world/ground.js'; // the city ground (heights for the walker, people and cars)
 import { Walker } from './player/walker.js';
-import { EYE_HEIGHT, CURB_HEIGHT, SAND, WET_LINE_X, TOWERS, HOTEL, DISTRICT } from './world/layout.js';
+import { EYE_HEIGHT, CURB_HEIGHT, HOTEL, EAST, DISTRICT } from './world/layout.js';
 import { updateLod } from './world/lod.js'; // DISTRICT: per-block distance culling
 import { createAudio } from './audio/index.js'; // SOUND agent: synthesized spatial audio
-import { createBirds } from './world/birds.js'; // BIRDS: pelicans, gulls, sanderlings, grackles
 import { buildPeople } from './world/people.js'; // PEOPLE fallback: the procedural figures (?people=procedural)
 import { preloadPeople } from './world/mixamo.js'; // PEOPLE: Mixamo characters, clip library, skates
 import { buildCrowd } from './world/crowd.js'; // PEOPLE: walkers, joggers, skaters, sitters, drivers
@@ -119,24 +115,16 @@ const sky = await createSky(renderer, scene, { requestShadow });
 bootMark('sky');
 await nextFrame();
 buildPlaceholders(scene);
-await loadStep(0.22, 'Painting the hotels…'); // LOADER
-const hotels = await buildHotels(scene, nextFrame);
-await loadStep(0.4, 'Planting palms…'); // LOADER
-const palms = buildPalms(scene);
-await loadStep(0.5, 'Laying Ocean Drive…'); // LOADER
+await loadStep(0.22, 'Raising the tong lau…'); // LOADER
+const hotels = await buildHkBuildings(scene, nextFrame);
+await loadStep(0.5, 'Laying the street…'); // LOADER
 buildStreet(scene);
 await loadStep(0.55, 'Parking the cars…'); // LOADER
 const cars = await buildCarsGlb(scene, renderer);
 const traffic = buildTraffic(scene, { kit: cars.traffic, shot: SHOT });
 window.__traffic = traffic;
-await loadStep(0.6, 'Pouring the ocean…'); // LOADER
-const surf = createSurf({ frozen: SHOT, anchorTime: FROZEN_TIME });
-const beach = buildBeach(scene, surf);
-await nextFrame();
-const ocean = createOcean(scene, surf);
-const birds = createBirds(scene, { beach, surf, shot: SHOT }); // BIRDS
-window.__birds = birds; // BIRDS
-await loadStep(0.72, 'Tuning the waves…'); // LOADER
+const beach = buildGround();   // (named beach: the same API the old beach module had)
+await loadStep(0.72, 'Lighting the signs…'); // LOADER
 const post = createPost(renderer, scene, camera, {
   ...(params.has('bloom') ? { bloomStrength: parseFloat(params.get('bloom')) } : {}),
   samples: QUALITY.msaa, bloom: QUALITY.bloom, fxaa: QUALITY.fxaa,
@@ -149,14 +137,16 @@ const walkWorld = {
   boxes: [
     // (the drivable hero car collides as the vehicle's moving circles instead of its box)
     ...STREET_COLLIDERS.filter((c) => c.min), ...cars.colliders.filter((c) => !(c.hero && cars.drive && !SHOT)), ...beach.colliders,
-    ...hotels.userData.footprints.map((f) => ({ min: { x: -80, y: -5, z: f.z0 }, max: { x: f.fx, y: 60, z: f.z1 } })),
+    // (west row: from the shopfronts back; east row: from the shopfronts on)
+    ...hotels.userData.footprints.map((f) => (f.side > 0
+      ? { min: { x: f.fx, y: -5, z: f.z0 }, max: { x: 80, y: 120, z: f.z1 } }
+      : { min: { x: -80, y: -5, z: f.z0 }, max: { x: f.fx, y: 120, z: f.z1 } })),
   ],
   circles: [
     // (the knockable bins and news boxes collide as their live props below)
     ...STREET_COLLIDERS.filter((c) => c.r && !c.knock),
-    ...PALM_TREES.filter((t) => Math.abs(t.z) < (OPEN_WORLD ? extentBounds(QUALITY.tier).z1 : DISTRICT.zMax) + 10).map((t) => ({ x: t.x, z: t.z, r: 0.26 })),
   ],
-  bounds: { x0: HOTEL.patioX + 0.2, x1: 110, z0: DISTRICT.zMin, z1: DISTRICT.zMax, soft: 14 },
+  bounds: { x0: HOTEL.patioX + 0.2, x1: EAST.frontX - 0.2, z0: DISTRICT.zMin, z1: DISTRICT.zMax, soft: 14 },
 };
 // open world: the walkable space is world/extent.js's (Ocean Drive and the beach to its open
 // ends, the near cross streets back to the rear row), with a soft slow-down at the road ends
@@ -188,8 +178,6 @@ window.__mirrorHide = mirrorHide;
 // --- SOUND hook: audio starts on the click-to-start gesture; never in ?shot mode ---
 const audio = createAudio({ voices: QUALITY.audioVoices });
 window.__audio = audio;
-audio.setGullSource?.((L) => birds.gullSource(L)); // BIRDS: gull calls come from visible gulls
-birds.onFlutter = (p) => audio.wingFlutter?.(p);   // BIRDS: wingbeats of a gull taking off nearby
 audio.setAutoSteps(false);   // the walker drives the footsteps
 
 // --- PEOPLE hook: Mixamo passers-by (the procedural figures if the models don't load);
@@ -244,7 +232,7 @@ const radioNext = () => {
 addEventListener('keydown', (ev) => { if (ev.code === 'KeyQ' && !ev.repeat && !SHOT) radioNext(); });
 window.__radio = { next: radioNext, get station() { return audio.radio.station; }, get name() { return audio.radio.name; }, ui: radioUi };
 // what the hero's rear-view mirror draws besides the cars (world/cars-glb.js)
-const MIRRORED = new Set(['placeholders', 'hotels', 'palms', 'street', 'ocean', 'parked-paint', 'parked-dark', 'parked-trim', 'parked-tyre']);
+const MIRRORED = new Set(['placeholders', 'hotels', 'street', 'parked-paint', 'parked-dark', 'parked-trim', 'parked-tyre']);
 for (const o of scene.children) if (MIRRORED.has(o.name) || o.material?.name === 'Sky') o.userData.mirror = true;
 people.setVehicles?.(vehicles);          // people step round the player's bike / ATV / car
 people.attachDrivers?.(traffic, cars);   // seated drivers in the traffic, the player's body at the wheel
@@ -271,18 +259,9 @@ function trafficObstacles() {
   return out;
 }
 
-// footstep surface: audio's map, refined by the beach (deck, stairs, damp sand, swash)
+// footstep surface: the street is all pavement and asphalt
 function stepSurface(x, z, feetY) {
-  const ground = beach.groundAt(x, z);
-  if (feetY - ground > 0.25 && TOWERS.some((T) => Math.abs(x - T.x) < 9 && Math.abs(z - T.z) < 5)) return { surface: 'wood' };
-  if (feetY - ground > 0.12 && x > 10.5 && x < 12.8) return { surface: 'pavement' };   // seawall steps
-  let surface = audio.surfaceAt(x, z, feetY, SAND.waterline);
-  if (x > SAND.x0 + 0.5) {
-    const depth = beach.waterDepthAt(x, z);
-    if (depth > 0.015) return { surface: 'splash', depth };
-    surface = x > WET_LINE_X - 3.5 || beach.swashAt(x, z).covered ? 'wetsand' : 'sand';
-  }
-  return { surface };
+  return { surface: audio.surfaceAt(x, z, feetY, Infinity) };
 }
 const stepLog = [];
 window.__stepLog = stepLog;
@@ -367,8 +346,6 @@ if (!SHOT) {
   });
   if (params.has('hud')) hud.classList.remove('hidden');
 }
-// visuals follow the audio's wave schedule (audio clock -> render clock)
-audio.onWave((w) => surf.pushAudioWave({ visualT0: elapsed + (w.t - w.now), k: w.k, size: w.size, runup: w.runup, z: w.z }));
 
 function onResize() {
   camera.aspect = window.innerWidth / window.innerHeight;
@@ -465,7 +442,6 @@ window.__dynres = () => ({ scale: renderScale, pixelRatio: renderer.getPixelRati
 let fps = 0;
 window.__groundHeight = (x, z) => beach.groundAt(x, z);
 window.__beach = beach;
-window.__surf = surf;
 window.__scene = scene;
 window.__renderer = renderer;
 window.__camera = camera;
@@ -553,13 +529,6 @@ function frame(t) {
   sky.update(camera);
   if (updateLod(camera)) requestShadow(); // DISTRICT
   prof('sky+lod');
-  surf.update(elapsed);
-  ocean.update(elapsed, camera);
-  beach.update(elapsed, camera);
-  palms.update(elapsed);
-  prof('sea+palms');
-  birds.update(dt, camera); // BIRDS
-  prof('birds');
   people.update(dt, camera); // PEOPLE
   if (!SHOT) exitDrivers.update(dt, camera);
   dynProps?.update(dt, camera);

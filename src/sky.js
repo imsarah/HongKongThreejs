@@ -12,7 +12,7 @@ export const sunDir = compassToDir(SUN.azimuthDeg, SUN.elevationDeg, new THREE.V
 // light, dim and cool skylight (the sky itself is only a fraction as bright).
 export const SUN_COLOR = new THREE.Color().setRGB(1.0, 0.6, 0.4, THREE.LinearSRGBColorSpace);
 export const SUN_INTENSITY = 5.1;
-export const ENV_INTENSITY = 1.0;
+export const ENV_INTENSITY = 1.45;
 export const FOG_DENSITY = 1 / 200; // per metre at sea level
 
 const v3 = (v) => `vec3(${v.x.toFixed(5)}, ${v.y.toFixed(5)}, ${v.z.toFixed(5)})`;
@@ -440,14 +440,17 @@ export async function createSky(renderer, scene, { requestShadow = () => { rende
   scene.add(sun, sun.target);
   // bounce off the sunlit sand and street: lifts the backlit faces (seawall, path, the
   // shaded flanks) out of black when looking into the sunrise
-  scene.add(new THREE.HemisphereLight(0xa9bddb, 0xc9a07a, 0.28));
+  // (Causeway Bay: the canyon of towers is lit mostly by the sky and the facades opposite)
+  scene.add(new THREE.HemisphereLight(0xb4c4dc, 0x9a8a7a, 0.85));
 
   // The shadow box (~2 cm texels on the facades) follows the viewer along the street. It
   // is only ever translated by whole shadow texels in light space, so static casters
   // rasterize identically after a move and nothing shimmers or pops; re-rendered each
   // time the viewer has moved 0.5 m.
   const SPAN = 80;
-  fitShadow(sun, new THREE.Box3(new THREE.Vector3(-62, -1.5, -SPAN), new THREE.Vector3(96, 30, SPAN)));
+  // (the box reaches the tower tops on both sides of the street; the casters it keeps
+  // stand up to ~800 m toward the sun, so the long dusk shadows of the towers fall in)
+  fitShadow(sun, new THREE.Box3(new THREE.Vector3(-62, -1.5, -SPAN), new THREE.Vector3(30, 130, SPAN)));
   const sc = sun.shadow.camera;
   const base = sun.target.position.clone();
   const axX = new THREE.Vector3().setFromMatrixColumn(sc.matrixWorld, 0);
@@ -473,7 +476,7 @@ export async function createSky(renderer, scene, { requestShadow = () => { rende
     _c.copy(_d).addScaledVector(axX, -u).addScaledVector(axY, -v)
       .addScaledVector(axX, Math.round(u / texX) * texX).addScaledVector(axY, Math.round(v / texY) * texY).add(base);
     sun.target.position.copy(_c);
-    sun.position.copy(_c).addScaledVector(sunDir, 400);
+    sun.position.copy(_c).addScaledVector(sunDir, 1500);
     sun.updateMatrixWorld();
     sun.target.updateMatrixWorld();
     requestShadow();
@@ -507,7 +510,7 @@ export async function createSky(renderer, scene, { requestShadow = () => { rende
 
 function fitShadow(light, box) {
   const center = box.getCenter(new THREE.Vector3());
-  light.position.copy(center).addScaledVector(sunDir, 400);
+  light.position.copy(center).addScaledVector(sunDir, 1500);
   light.target.position.copy(center);
   light.updateMatrixWorld();
   light.target.updateMatrixWorld();
@@ -528,7 +531,7 @@ function fitShadow(light, box) {
   cam.right = lb.max.x;
   cam.bottom = lb.min.y;
   cam.top = lb.max.y;
-  cam.near = Math.max(0.5, -lb.max.z - 60);
+  cam.near = Math.max(0.5, -lb.max.z - 800);
   cam.far = -lb.min.z + 5;
   cam.updateProjectionMatrix();
 }
