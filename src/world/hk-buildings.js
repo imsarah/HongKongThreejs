@@ -14,6 +14,7 @@ import { HOTEL, EAST, CURB_HEIGHT, CROSS, CROSS_STREETS, DISTRICT, SIDEWALK_W, S
 import { registerLod } from './lod.js';
 import { QUALITY } from '../quality.js';
 import { mulberry32 } from '../textures/noise.js';
+import { cityTextureSet } from '../textures/city.js';
 
 // height of the shop storey (the canopy sits on top of it)
 export const SHOP_H = CURB_HEIGHT + 4.6;
@@ -199,7 +200,14 @@ const ST = { tong: 0, resi: 1, glass: 2, ribbon: 3, shop: 4, blank: 5, rail: 6, 
 // rain streaks, all from world position.
 function facadeMaterial() {
   const m = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.88, metalness: 0.0 });
+  const plaster = cityTextureSet('painted_plaster_wall');
+  m.defines = plaster ? { HK_SCAN_PLASTER: 1 } : {};
   m.onBeforeCompile = (s) => {
+    if (plaster) {
+      s.uniforms.hkPlasterColor = { value: plaster.color };
+      s.uniforms.hkPlasterNormal = { value: plaster.normal };
+      s.uniforms.hkPlasterArm = { value: plaster.arm };
+    }
     s.vertexShader = s.vertexShader
       .replace('#include <common>', '#include <common>\nattribute vec4 aFac;\nvarying vec4 vHkF;\nvarying vec3 vHkP;\nvarying vec3 vHkN;')
       .replace('#include <project_vertex>', `#include <project_vertex>
@@ -211,11 +219,24 @@ function facadeMaterial() {
         varying vec4 vHkF;
         varying vec3 vHkP;
         varying vec3 vHkN;
+        #ifdef HK_SCAN_PLASTER
+        uniform sampler2D hkPlasterColor, hkPlasterNormal, hkPlasterArm;
+        #endif
         float hkH(vec2 p) { p = fract(p * vec2(123.34, 456.21)); p += dot(p, p + 45.32); return fract(p.x * p.y); }
         float hkN1(vec2 p) { vec2 i = floor(p), f = fract(p); vec2 u = f * f * (3.0 - 2.0 * f);
-          return mix(mix(hkH(i), hkH(i + vec2(1, 0)), u.x), mix(hkH(i + vec2(0, 1)), hkH(i + vec2(1, 1)), u.x), u.y); }`)
+          return mix(mix(hkH(i), hkH(i + vec2(1, 0)), u.x), mix(hkH(i + vec2(0, 1)), hkH(i + vec2(1, 1)), u.x), u.y); }
+        vec3 hkSurfaceNormal(vec3 position, vec3 n, vec2 heightGradient, float facing) {
+          vec3 dx = dFdx(position), dy = dFdy(position);
+          vec3 rx = cross(dy, n), ry = cross(n, dx);
+          float det = dot(dx, rx) * facing;
+          if (abs(det) < 1e-10) return n;
+          return normalize(abs(det) * n - sign(det) * (heightGradient.x * rx + heightGradient.y * ry));
+        }`)
       .replace('#include <color_fragment>', `#include <color_fragment>
         float hkGlass = 0.0;
+        float hkRelief = 0.0, hkWallRoughness = 0.88, hkPaneRoughness = 0.12;
+        float hkScanMask = 0.0, hkScanAo = 1.0;
+        vec3 hkScanNormal = vec3(0.0, 0.0, 1.0), hkScanTangent = vec3(1.0, 0.0, 0.0);
         {
           vec3 hN = normalize(vHkN);
           float hkV = 1.0 - abs(hN.y);
@@ -223,6 +244,9 @@ function facadeMaterial() {
           // (the seed rounded: an interpolated float fed to the hashes sparkles per pixel)
           float sd = floor(vHkF.w * 997.0 + 0.5) * 0.0371;
           float finish = fract(vHkF.w * 13.7);
+          float paneVariation = hkH(floor(vHkP.zy / vec2(2.0, 3.0)) + sd);
+          hkPaneRoughness = 0.09 + 0.065 * paneVariation;
+          float glassFresnel = pow(1.0 - clamp(abs(dot(normalize(cameraPosition - vHkP), hN)), 0.0, 1.0), 5.0);
           bool xFace = abs(hN.x) > abs(hN.z);
           float along = xFace ? vHkP.z : vHkP.x;
           vec3 T = xFace ? vec3(0.0, 0.0, 1.0) : vec3(1.0, 0.0, 0.0);
@@ -240,8 +264,25 @@ function facadeMaterial() {
               grout = mix(grout, 0.3, far);
               float jit = mix(0.9 + 0.16 * hkH(floor(tc) + sd), 0.98, far);
               wall = mix(wall * jit, wall * 0.74, grout);
+              hkRelief = -0.0012 * grout * (1.0 - far) * hkV;
+              hkWallRoughness = mix(0.72, 0.94, grout);
             } else if (finish < 0.78) {
+              #ifdef HK_SCAN_PLASTER
+              // The scan covers two metres. Keep each building's paint palette.
+              vec2 plasterUv = sp / 2.0 + vec2(sd * 0.37, sd * 0.13);
+              vec3 plasterColor = texture2D(hkPlasterColor, plasterUv).rgb;
+              vec3 plasterArm = texture2D(hkPlasterArm, plasterUv).rgb;
+              wall *= clamp(plasterColor / 0.36, vec3(0.5), vec3(1.35));
+              hkWallRoughness = clamp(plasterArm.g, 0.65, 1.0);
+              hkScanAo = plasterArm.r;
+              hkScanMask = hkV;
+              hkScanTangent = T;
+              hkScanNormal = texture2D(hkPlasterNormal, plasterUv).xyz * 2.0 - 1.0;
+              #else
               wall *= 0.9 + 0.14 * hkN1(sp * 0.35 + sd) + 0.05 * hkN1(sp * 3.1 + sd);
+              hkRelief = 0.0008 * hkN1(sp * 9.0 + sd) * hkV;
+              hkWallRoughness = 0.91;
+              #endif
             } else {
               vec2 tc = sp / vec2(0.3, 0.15);
               vec2 fw = fwidth(tc);
@@ -249,6 +290,8 @@ function facadeMaterial() {
               vec2 gl = smoothstep(vec2(0.46) - fw, vec2(0.46), g);
               float far = smoothstep(0.25, 0.8, max(fw.x, fw.y));
               wall = mix(wall * (0.94 + 0.1 * hkH(floor(tc) + sd)), wall * 0.8, mix(max(gl.x, gl.y), 0.15, far));
+              hkRelief = -0.0018 * max(gl.x, gl.y) * (1.0 - far) * hkV;
+              hkWallRoughness = mix(0.68, 0.92, max(gl.x, gl.y));
             }
             // rain streaks from the roof and the ledges, darker low down
             float sk = hkN1(vec2(along * 1.3 + sd * 50.0, vHkP.y * 0.06));
@@ -275,6 +318,7 @@ function facadeMaterial() {
               : vec4(0.04, 0.96, 0.06, 0.94);
             float pier = st > 0.5 && st < 1.5 ? step(mod(bi + floor(sd * 3.0), 4.0), 0.5) : 0.0;
             float inWin = step(wr.x, bx) * step(bx, wr.y) * step(wr.z, f) * step(f, wr.w) * (1.0 - pier);
+            hkScanMask *= 1.0 - inWin;
             // parallax reveal: the frame and glass sit rz back in the wall. Where the view ray
             // meets that plane is where frame / glass / room are looked up (bg, fg); a ray that
             // meets it outside the opening sees the reveal (jamb, head or sill) instead.
@@ -354,7 +398,7 @@ function facadeMaterial() {
             col = mix(col, mix(wall * 0.95, vec3(0.03), share * 0.85), far);
             emitW = mix(emitW, share * mix(vec3(0.06), vec3(0.95, 0.88, 0.78), 0.22) * 0.8, far);
             hkGlass = mix(hkGlass, share * 0.7, far);
-            totalEmissiveRadiance += emitW;
+            totalEmissiveRadiance += emitW * (1.0 - 0.85 * glassFresnel);
           } else if (hkV > 0.5 && st > 3.5 && st < 4.5) {
             // --- shopfront: glazing into a deep lit shop (the vertex colour is its light)
             float shopW = 4.6;
@@ -390,13 +434,18 @@ function facadeMaterial() {
                 float pack = step(0.1, fract(px)) * step(0.12, inRow) * step(inRow, 0.3 + 0.6 * cell) * step(0.15, cell) * step(0.3, gc.y) * step(gc.y, 2.3);
                 vec3 goods = vec3(0.3 + 0.7 * fract(cell * 3.1), 0.25 + 0.65 * fract(cell * 7.3), 0.25 + 0.7 * fract(cell * 13.7));
                 goods = mix(vec3(dot(goods, vec3(0.33))), goods, 0.55 + 0.45 * step(0.75, fract(cell * 19.0)));
+                // Packaging has shaded edges and printed labels, rather than flat colour bars.
+                float edge = smoothstep(0.1, 0.23, fract(px)) * (1.0 - smoothstep(0.84, 1.0, fract(px)));
+                goods *= 0.64 + 0.36 * edge;
+                float label = step(0.3, fract(px)) * step(fract(px), 0.75) * step(0.25, inRow) * step(inRow, 0.43) * step(0.4, cell);
+                goods = mix(goods, vec3(0.76, 0.73, 0.65), label * 0.65);
                 rc = mix(rc * 0.6, goods * 0.8, pack);
                 rc = mix(rc, vec3(0.32, 0.3, 0.28), step(inRow, 0.06) * step(0.3, gc.y) * step(gc.y, 2.4));
               }
               float tube = d.y > 0.0 && t == ty ? step(0.85, fract(h.z * 0.7)) : 0.0;
               float fall = 1.0 - 0.4 * clamp(h.z / D, 0.0, 1.0);
               vec3 inside = rc * wall * fall * fall * 0.5 + tube * wall * 2.2;
-              totalEmissiveRadiance += inside * glassA;
+              totalEmissiveRadiance += inside * glassA * (1.0 - 0.85 * glassFresnel);
             }
             col = mix(vec3(0.17, 0.17, 0.18), vec3(0.015), glassA);
             vec3 shut = vec3(0.52, 0.54, 0.54) * (0.8 + 0.2 * step(0.5, fract(yy * 10.0))) * (0.85 + 0.15 * hkN1(vec2(along * 3.0, yy)));
@@ -412,13 +461,25 @@ function facadeMaterial() {
             float sm = step(0.42, bx) * step(bx, 0.58) * step(0.4, f) * step(f, 0.7) * step(0.86, r1) * step(0.0, y);
             col = mix(col * 0.92, vec3(0.03), sm);
             hkGlass = sm;
+            hkScanMask *= 1.0 - sm;
           }
           diffuseColor.rgb = col;
         }`)
+      .replace('#include <normal_fragment_maps>', `#include <normal_fragment_maps>
+        // Millimetre-scale relief; pane normals stay flat for clean reflections.
+        vec2 hkGradient = vec2(dFdx(hkRelief), dFdy(hkRelief)) * (1.0 - hkGlass);
+        normal = hkSurfaceNormal(-vViewPosition, normal, hkGradient, faceDirection);
+        #ifdef HK_SCAN_PLASTER
+        vec3 hkWorldNormal = normalize(normalize(vHkN) * hkScanNormal.z
+          + hkScanTangent * hkScanNormal.x * 0.45 + vec3(0.0, 1.0, 0.0) * hkScanNormal.y * 0.45);
+        normal = normalize(mix(normal, mat3(viewMatrix) * hkWorldNormal, hkScanMask));
+        #endif`)
+      .replace('#include <aomap_fragment>', `#include <aomap_fragment>
+        reflectedLight.indirectDiffuse *= mix(1.0, hkScanAo, hkScanMask * 0.45);`)
       .replace('#include <roughnessmap_fragment>', `#include <roughnessmap_fragment>
-        roughnessFactor = mix(roughnessFactor, 0.06, hkGlass);`);
+        roughnessFactor = mix(hkWallRoughness, hkPaneRoughness, hkGlass);`);
   };
-  m.customProgramCacheKey = () => 'hk-facade-v3';
+  m.customProgramCacheKey = () => 'hk-facade-v5';
   return m;
 }
 

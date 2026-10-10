@@ -18,9 +18,15 @@ top of it is new: the city, the street, the buildings, the signs, the markings, 
 rules, the light and the controls. Nothing of Miami is left on screen. See
 [Where it came from](#where-it-came-from) for what was kept and what was replaced.
 
-The buildings, signs, street, sky and every sound are generated in code at load time. The only
+The buildings, signs, street and every sound are generated in code at load time. The only
 files the scene loads are Ocean Drive's car models, built in Blender for that project, the
-Mixamo people and their animations, and two Poly Haven CC0 normal maps for the car interiors.
+Mixamo people and their animations, Poly Haven CC0 texture scans for the road, paving and
+painted plaster, a Poly Haven HDRI sky, and two Poly Haven normal maps for the car interiors. The city scans include
+albedo, normal and packed occlusion/roughness maps, stored locally as WebP at 1K (high/medium)
+and 512 px (low). [Sources and asset credits](public/textures/city/README.md).
+The HDRI adds a restrained contribution to ambient lighting and reflections; the visible sky
+and haze retain the original afternoon treatment. Local 4K/2K/1K files are used
+for high/medium/low quality. [HDRI source and lighting notes](public/environments/README.md).
 The shop and sign names are invented: there is no real business, brand or logo anywhere in the
 scene. The street names are real Causeway Bay streets.
 

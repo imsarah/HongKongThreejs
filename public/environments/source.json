@@ -1,0 +1,46 @@
+{
+  "id": "modern_evening_street",
+  "name": "Modern Evening Street",
+  "authors": [
+    "Grzegorz Wronkowski"
+  ],
+  "source": "https://polyhaven.com/a/modern_evening_street",
+  "license": "CC0-1.0",
+  "licenseUrl": "https://polyhaven.com/license",
+  "tiers": {
+    "1k": {
+      "file": "modern_evening_street_1k.hdr",
+      "url": "https://dl.polyhaven.org/file/ph-assets/HDRIs/hdr/1k/modern_evening_street_1k.hdr",
+      "md5": "89a5d4dae860c97e465ca8582ed73737",
+      "bytes": 1651202
+    },
+    "2k": {
+      "file": "modern_evening_street_2k.hdr",
+      "url": "https://dl.polyhaven.org/file/ph-assets/HDRIs/hdr/2k/modern_evening_street_2k.hdr",
+      "md5": "f16d9ee891148a1504cc6e2048516f90",
+      "bytes": 6418864
+    },
+    "4k": {
+      "file": "modern_evening_street_4k.hdr",
+      "url": "https://dl.polyhaven.org/file/ph-assets/HDRIs/hdr/4k/modern_evening_street_4k.hdr",
+      "md5": "28dacaae5097b6272f30d52c3aeaca2c",
+      "bytes": 24985447
+    }
+  },
+  "lighting": {
+    "hasDirectSun": false,
+    "sunDirection": [
+      -0.10612144797395061,
+      0.45781330359887723,
+      0.8826920285851654
+    ],
+    "sunElevationDeg": 27.246093750000004,
+    "skyLuminance": 1.3157321223174143,
+    "horizonColor": [
+      0.13845919296308498,
+      0.18681842944094773,
+      0.2754559154399853
+    ],
+    "peakLuminance": 5306.083843798828
+  }
+}

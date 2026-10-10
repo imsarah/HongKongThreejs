@@ -27,6 +27,8 @@ import { releaseGeometryAfterUpload, releaseCanvasesAfterUpload } from './render
 import { OPEN_WORLD } from './vehicles/specs.js';
 import { edgeDistance, softDistance, extentBounds, EDGE_SOFT } from './world/extent.js';
 import { createGpuTimer } from './renderer/gpu-timer.js';
+import { preloadCityTextures, cityTextureMaps } from './textures/city.js';
+import { preloadEnvironment } from './textures/environment.js';
 
 const params = new URLSearchParams(location.search);
 const SHOT = params.get('shot') === '1';
@@ -110,6 +112,8 @@ let shadowWanted = true, shadowAt = -Infinity;
 const requestShadow = () => { shadowWanted = true; };
 
 preloadCars();   // the car models download while the world builds
+const cityTexturesLoad = preloadCityTextures();
+preloadEnvironment();
 const peopleLoad = params.get('people') === 'procedural' ? Promise.resolve(null) : preloadPeople();   // and the people
 await loadStep(0.1, 'Lighting the sky…'); // LOADER
 const sky = await createSky(renderer, scene, { requestShadow });
@@ -117,6 +121,7 @@ bootMark('sky');
 await nextFrame();
 buildPlaceholders(scene);
 await loadStep(0.22, 'Raising the tong lau…'); // LOADER
+await cityTexturesLoad;
 const hotels = await buildHkBuildings(scene, nextFrame);
 await loadStep(0.5, 'Laying the street…'); // LOADER
 buildStreet(scene);
@@ -477,16 +482,20 @@ window.__gpuBudget = () => {
   const sm = sky.sun.shadow.mapSize, shadow = sm.x * sm.y * 4;
   let tex = 0;
   const seen = new Set();
+  const countTexture = v => {
+    if (!v?.isTexture || seen.has(v)) return;
+    seen.add(v);
+    const im = v.image, [w, h] = v.userData.size ?? [im?.width ?? 0, im?.height ?? 0], d = im?.depth ?? 1;
+    const bytesPerPixel = v.type === THREE.HalfFloatType ? 8 : v.type === THREE.FloatType ? 16 : 4;
+    tex += w * h * d * bytesPerPixel * (v.generateMipmaps !== false && !v.isDataTexture ? 1.33 : 1);
+  };
   scene.traverse((o) => {
     for (const m of [].concat(o.material ?? [])) {
-      for (const v of Object.values(m)) {
-        if (!v?.isTexture || seen.has(v)) continue;
-        seen.add(v);
-        const im = v.image, [w, h] = v.userData.size ?? [im?.width ?? 0, im?.height ?? 0], d = im?.depth ?? 1;
-        tex += w * h * d * 4 * (v.generateMipmaps !== false && !v.isDataTexture ? 1.33 : 1);
-      }
+      Object.values(m).forEach(countTexture);
     }
   });
+  cityTextureMaps().forEach(countTexture); // includes the facade shader's custom samplers
+  sky.textures.forEach(countTexture);
   return { canvasMP: +(px / 1e6).toFixed(2), postMB: mb(post + px * 4), shadowMB: mb(shadow), texturesMB: mb(tex), totalMB: mb(post + px * 4 + shadow + tex) };
 };
 window.__sceneReady = false;
@@ -631,7 +640,7 @@ bootMark('compiled');
 // time (culling off) that build their shadow-depth programs and upload their geometry,
 // then one of the whole frame for the post-processing passes.
 {
-  const textures = new Set();
+  const textures = new Set([...cityTextureMaps(), ...sky.textures]);
   scene.traverse((o) => {
     for (const m of [].concat(o.material ?? [])) for (const v of Object.values(m)) if (v?.isTexture) textures.add(v);
   });

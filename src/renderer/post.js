@@ -15,7 +15,7 @@ const GradeShader = {
     tDiffuse: { value: null },
     uTime: { value: 0 },
     uResolution: { value: new THREE.Vector2(1, 1) },
-    uShadowTint: { value: new THREE.Vector3(0.93, 0.98, 1.08) },
+    uShadowTint: { value: new THREE.Vector3(0.94, 1.01, 1.06) },
     uHighlightTint: { value: new THREE.Vector3(1.02, 0.995, 0.985) },
     uSaturation: { value: 0.97 },
     uSunUv: { value: new THREE.Vector2(0.5, 0.5) },
@@ -80,7 +80,7 @@ const FinishShader = {
     uTime: { value: 0 },
     uResolution: { value: new THREE.Vector2(1, 1) },
     uVignette: { value: 0.12 },
-    uContrast: { value: 0.4 },
+    uContrast: { value: 0.28 },
   },
   vertexShader: GradeShader.vertexShader,
   fragmentShader: /* glsl */ `

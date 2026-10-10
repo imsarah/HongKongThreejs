@@ -1,5 +1,41 @@
 # Changelog
 
+## 2026-10-11: Restore afternoon sky and depth
+
+- Restored the original visible sky and directional haze after the full HDRI treatment made
+  the sky grey and the distant street too pale.
+- Reduced the HDRI to an 18% contribution to environment lighting while retaining the original
+  sunlight and ambient balance. Car probes again capture the original sky with the local street.
+- Release the source HDR texture after filtering to avoid retaining its full CPU/GPU allocation.
+
+## 2026-10-11: Photographed HDR sky and lighting
+
+- Downloaded Poly Haven's CC0 Kloofendal 28d Misty HDRI at 4K, 2K and 1K for the three quality tiers.
+- The HDR sky now supplies the visible sky, filtered environment lighting and car reflection probes.
+  Its solar direction matches the shadow-casting sun; its solar core is excluded from indirect lighting.
+- Matched distant haze to the photographed horizon and reduced the extra hemisphere fill.
+- Added source credits, verified hashes, a reproducible importer, and HDR texture memory accounting.
+
+## 2026-10-11: Herringbone sidewalk paving
+
+- Applied Poly Haven's Herringbone Brick 03 by Charlotte Baglioni to the sidewalks and ramps,
+  using its 2 m tile width, scanned colour, normals, roughness and ambient occlusion.
+- Removed the old procedural brick-band overlays so the paving pattern covers the whole sidewalk.
+- Packaged both 1K and 512 px local WebP tiers with source credits and verified download hashes.
+
+## 2026-10-11: Poly Haven city materials
+
+- Added CC0 surface scans: Asphalt 02 by Rob Tuytel, Concrete Pavement by Charlotte Baglioni,
+  and Painted Plaster Wall by Amal Kumar. See `public/textures/city/README.md` for source links.
+- Road and sidewalk materials use albedo, OpenGL normals, and packed ambient occlusion /
+  roughness maps, tiled at the assets' real dimensions. Existing road wear and brick bands remain.
+- Painted facades use scanned discoloration, normals and roughness while retaining their paint
+  colours. The scan is masked away from windows and shop glazing.
+- Assets are local WebP files: 1K for high/medium quality and 512 px for low quality. Downloads
+  start with the car and people loads; missing texture sets fall back to procedural materials.
+- `tools/import-polyhaven.mjs` regenerates both tiers and records source URLs and verified
+  hashes in `public/textures/city/sources.json`. Browser previews cover all quality tiers.
+
 ## 2026-10-10: Causeway Bay, Hong Kong (rebuilt on top of Ocean Drive)
 
 The scene is no longer Ocean Drive. It keeps Ocean Drive's engine (renderer, sky and shadows,
