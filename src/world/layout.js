@@ -97,8 +97,9 @@ function crossGround(x, z) {
 export const EYE_HEIGHT = 1.7;
 
 // Sun: compass azimuth (0 = north, 90 = east) and elevation above horizon.
-// Causeway Bay at dusk: the sun low in the west-north-west, shining down the cross streets.
-export const SUN = { azimuthDeg: 290, elevationDeg: 10 };
+// Causeway Bay, late afternoon: a low golden sun in the south-west, lighting the east row's
+// fronts and shining across the street between the towers.
+export const SUN = { azimuthDeg: 238, elevationDeg: 24 };
 
 export function compassToDir(azimuthDeg, elevationDeg, target) {
   const az = (azimuthDeg * Math.PI) / 180;

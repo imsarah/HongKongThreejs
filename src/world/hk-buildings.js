@@ -161,6 +161,23 @@ class Geo {
       this.quad(...F[k], o.col ?? col, o.fac ?? fac, o.uv ?? null);
     }
   }
+  // vertical cylinder (sides and top), seg facets
+  cyl(x, z, r, y0, y1, col, seg = 12) {
+    for (let i = 0; i < seg; i++) {
+      const a0 = (i / seg) * Math.PI * 2, a1 = ((i + 1) / seg) * Math.PI * 2;
+      const p0 = [x + Math.cos(a0) * r, y0, z + Math.sin(a0) * r], p1 = [x + Math.cos(a1) * r, y0, z + Math.sin(a1) * r];
+      this.quad(p1, [p0[0] - p1[0], 0, p0[2] - p1[2]], [0, y1 - y0, 0], col);
+      this.tri([x, y1, z], [p1[0], y1, p1[2]], [p0[0], y1, p0[2]], col);
+    }
+  }
+  tri(a, b, c, col) {
+    const i = this.p.length / 3;
+    const u = [b[0] - a[0], b[1] - a[1], b[2] - a[2]], v = [c[0] - a[0], c[1] - a[1], c[2] - a[2]];
+    let nx = u[1] * v[2] - u[2] * v[1], ny = u[2] * v[0] - u[0] * v[2], nz = u[0] * v[1] - u[1] * v[0];
+    const l = Math.hypot(nx, ny, nz) || 1; nx /= l; ny /= l; nz /= l;
+    for (const q of [a, b, c]) { this.p.push(...q); this.n.push(nx, ny, nz); this.c.push(col.r, col.g, col.b); this.uv.push(0, 0); this.f.push(...FAC0); }
+    this.idx.push(i, i + 1, i + 2);
+  }
   get empty() { return this.p.length === 0; }
   geometry() {
     const g = new THREE.BufferGeometry();
@@ -175,7 +192,7 @@ class Geo {
   }
 }
 const FAC0 = [5, 3, 3, 0];
-const ST = { tong: 0, resi: 1, glass: 2, ribbon: 3, shop: 4, blank: 5 };
+const ST = { tong: 0, resi: 1, glass: 2, ribbon: 3, shop: 4, blank: 5, rail: 6, bay: 7 };
 
 // ---------------------------------------------------------------------------
 // The facade material: windows, frames, curtains, lit rooms, shopfronts, tile grain and
@@ -205,99 +222,183 @@ function facadeMaterial() {
           float st = vHkF.x, fh = vHkF.y, bay = vHkF.z;
           // (the seed rounded: an interpolated float fed to the hashes sparkles per pixel)
           float sd = floor(vHkF.w * 997.0 + 0.5) * 0.0371;
-          float along = abs(hN.x) > abs(hN.z) ? vHkP.z : vHkP.x;
+          float finish = fract(vHkF.w * 13.7);
+          bool xFace = abs(hN.x) > abs(hN.z);
+          float along = xFace ? vHkP.z : vHkP.x;
+          vec3 T = xFace ? vec3(0.0, 0.0, 1.0) : vec3(1.0, 0.0, 0.0);
           vec3 wall = diffuseColor.rgb;
-          // mosaic tile grain, rain streaks and grime at the foot of each floor
-          wall *= 0.95 + 0.07 * hkH(floor(vec2(along, vHkP.y) * 9.0) + sd);
-          float sk = hkN1(vec2(along * 1.3 + sd * 50.0, vHkP.y * 0.08));
-          wall *= 1.0 - 0.28 * smoothstep(0.55, 0.95, sk) * (0.5 + 0.5 * hkN1(vec2(along * 6.0, vHkP.y * 0.7)));
-          wall *= 0.9 + 0.1 * smoothstep(0.0, 25.0, vHkP.y);
+          vec2 sp = vec2(along, vHkP.y);
+          // --- the wall finish: small mosaic tiles, painted render or large tiles
+          if (abs(st - ${ST.shop.toFixed(1)}) > 0.5) {
+            if (finish < 0.5) {
+              vec2 tc = sp / 0.055;
+              vec2 fw = fwidth(tc);
+              vec2 g = abs(fract(tc) - 0.5);
+              vec2 gl = smoothstep(vec2(0.42) - fw, vec2(0.42), g);
+              float grout = max(gl.x, gl.y);
+              float far = smoothstep(0.25, 0.8, max(fw.x, fw.y));
+              grout = mix(grout, 0.3, far);
+              float jit = mix(0.9 + 0.16 * hkH(floor(tc) + sd), 0.98, far);
+              wall = mix(wall * jit, wall * 0.74, grout);
+            } else if (finish < 0.78) {
+              wall *= 0.9 + 0.14 * hkN1(sp * 0.35 + sd) + 0.05 * hkN1(sp * 3.1 + sd);
+            } else {
+              vec2 tc = sp / vec2(0.3, 0.15);
+              vec2 fw = fwidth(tc);
+              vec2 g = abs(fract(tc + vec2(0.5 * step(0.5, fract(floor(tc.y) * 0.5)), 0.0)) - 0.5);
+              vec2 gl = smoothstep(vec2(0.46) - fw, vec2(0.46), g);
+              float far = smoothstep(0.25, 0.8, max(fw.x, fw.y));
+              wall = mix(wall * (0.94 + 0.1 * hkH(floor(tc) + sd)), wall * 0.8, mix(max(gl.x, gl.y), 0.15, far));
+            }
+            // rain streaks from the roof and the ledges, darker low down
+            float sk = hkN1(vec2(along * 1.3 + sd * 50.0, vHkP.y * 0.06));
+            wall *= 1.0 - 0.3 * smoothstep(0.5, 0.95, sk) * (0.45 + 0.55 * hkN1(vec2(along * 7.0, vHkP.y * 0.5)));
+            wall *= 0.86 + 0.14 * smoothstep(0.0, 30.0, vHkP.y);
+          }
           vec3 col = wall;
           float y = vHkP.y - ${SHOP_H.toFixed(3)};
           float f = fract(y / fh), fl = floor(y / fh);
           float bx = fract(along / bay), bi = floor(along / bay);
           float r1 = hkH(vec2(bi, fl) + sd * 17.0), r2 = hkH(vec2(bi + 7.1, fl * 1.3) + sd * 3.0);
-          vec3 glass = vec3(0.06, 0.075, 0.09) * (0.7 + 0.6 * r2);
-          vec3 lit = mix(vec3(1.0, 0.7, 0.4), vec3(0.8, 0.92, 1.0), step(0.45, r2)) * (0.55 + 0.6 * r1);
-          float isLit = step(0.8, hkH(vec2(bi * 0.37, fl) + sd * 31.0));
-          float win = 0.0;
+          float isLit = step(0.78, hkH(vec2(bi * 0.37, fl) + sd * 31.0));
+          // the view ray in the facade's frame: x along, y up, z into the wall
+          vec3 V = vHkP - cameraPosition;
+          vec3 rd = vec3(dot(V, T), V.y, dot(V, -hN));
           if (hN.y > 0.5) {
-            col = wall * 0.5;   // roofs: weathered concrete
-          } else if (hkV > 0.5 && st < 3.5 && y > 0.0) {
-            float frame = 0.0;
-            if (st < 0.5) {
-              // tong lau: a window per bay with a frame and a centre mullion, a sill
-              float wx = step(0.16, bx) * step(bx, 0.84), wy = step(0.3, f) * step(f, 0.88);
-              float inner = step(0.19, bx) * step(bx, 0.81) * step(0.33, f) * step(f, 0.85);
-              float mull = step(abs(bx - 0.5), 0.012) * inner;
-              frame = wx * wy * (1.0 - inner) + mull;
-              win = inner - mull;
-              col = mix(col, wall * 1.15, step(0.27, f) * step(f, 0.3) * step(0.13, bx) * step(bx, 0.87));
-              col = mix(col, vec3(0.74, 0.76, 0.76) * (0.85 + 0.2 * r2), frame);
-            } else if (st < 1.5) {
-              // residential tower: narrow bays, a solid pier every fourth
-              float pier = step(mod(bi, 4.0), 0.5);
-              float wy = step(0.2, f) * step(f, 0.9);
-              float inner = step(0.12, bx) * step(bx, 0.88) * step(0.23, f) * step(f, 0.87);
-              frame = step(0.09, bx) * step(bx, 0.91) * wy * (1.0 - inner) * (1.0 - pier);
-              win = inner * (1.0 - pier);
-              col = mix(col, vec3(0.7, 0.72, 0.72), frame);
-            } else if (st < 2.5) {
-              // curtain wall: tinted glass, mullions and spandrels
-              float mull = 1.0 - step(0.035, bx) * step(bx, 0.965);
-              float span = 1.0 - step(0.14, f);
-              win = (1.0 - mull) * (1.0 - span);
-              col = mix(col * 0.75, col * 1.05, mull);
-              glass = mix(vec3(0.12, 0.2, 0.22), vec3(0.16, 0.2, 0.26), step(0.5, fract(sd * 9.0))) * (0.85 + 0.3 * r2);
-              isLit *= step(0.4, r2);
-            } else {
-              // ribbon windows of the older commercial blocks
-              float mull = step(bx, 0.035);
-              float wy = step(0.34, f) * step(f, 0.86);
-              win = wy * (1.0 - mull);
-              col = mix(col, vec3(0.62, 0.64, 0.64), wy * mull);
+            col = wall * 0.48;   // roofs: weathered concrete
+          } else if (hkV > 0.5 && (st < 3.5 || st > 6.5) && y > 0.0) {
+            // --- windows: a rectangle in each bay x floor cell, per style
+            vec4 wr = st < 0.5 ? vec4(0.17, 0.83, 0.3, 0.87)
+              : st < 1.5 ? vec4(0.1, 0.9, 0.22, 0.88)
+              : st < 2.5 ? vec4(0.035, 0.965, 0.14, 1.0)
+              : st < 3.5 ? vec4(0.0, 1.0, 0.34, 0.86)
+              : vec4(0.04, 0.96, 0.06, 0.94);
+            float pier = st > 0.5 && st < 1.5 ? step(mod(bi + floor(sd * 3.0), 4.0), 0.5) : 0.0;
+            float inWin = step(wr.x, bx) * step(bx, wr.y) * step(wr.z, f) * step(f, wr.w) * (1.0 - pier);
+            float fwB = 0.05 / bay, fwF = 0.05 / fh;   // 5 cm frames
+            float inner = step(wr.x + fwB, bx) * step(bx, wr.y - fwB) * step(wr.z + fwF, f) * step(f, wr.w - fwF);
+            // mullions: one in the middle of the old windows, one per 1.2 m in the ribbons
+            float mullX = st < 0.5 ? step(abs(bx - 0.5), 0.012) : st > 2.5 && st < 3.5 ? step(fract(along / 1.25), 0.03) : st > 1.5 && st < 2.5 ? 0.0 : step(abs(bx - 0.62), 0.01);
+            float transomY = st < 1.5 ? step(abs(f - (wr.z + (wr.w - wr.z) * 0.72)), 0.012) : 0.0;
+            float glassM = inWin * inner * (1.0 - mullX) * (1.0 - transomY);
+            float frameM = inWin * (1.0 - glassM);
+            vec3 frameC = st < 0.5 && r2 > 0.55 ? vec3(0.42, 0.5, 0.42) : vec3(0.76, 0.78, 0.78) * (0.85 + 0.2 * r2);
+            // the sill and the dark stain that drips from it
+            float under = step(wr.x - 0.02, bx) * step(bx, wr.y + 0.02) * (1.0 - pier);
+            float sill = under * step(wr.z - 0.03, f) * step(f, wr.z) * step(st, 1.5);
+            float drip = under * step(f, wr.z - 0.03) * smoothstep(0.0, wr.z, f) * (0.35 + 0.65 * hkN1(vec2(along * 22.0, y * 0.4 + sd))) * step(st, 3.5);
+            col *= 1.0 - 0.28 * drip * (0.5 + 0.5 * fract(sd * 7.0));
+            col = mix(col, wall * 1.12, sill);
+            // the reveal: the frame sits back in the wall, its top and one side in shadow
+            float rv = inWin * (1.0 - inner) * step(st, 1.5);
+            col = mix(col, frameC, frameM);
+            col *= 1.0 - 0.35 * rv * step(wr.w - fwF, f);
+            if (glassM > 0.0) {
+              // interior mapping: a room the size of the cell, 4.5 m deep, behind the glass
+              float W = bay, H = fh, D = st > 1.5 && st < 2.5 ? 7.0 : 4.5;
+              vec3 p0 = vec3(bx * W, f * H, 0.0);
+              vec3 d = rd;
+              float tx = d.x > 0.0 ? (W - p0.x) / d.x : -p0.x / min(d.x, -1e-4);
+              float ty = d.y > 0.0 ? (H - p0.y) / d.y : -p0.y / min(d.y, -1e-4);
+              float tz = D / max(d.z, 1e-4);
+              float t = min(min(tx, ty), tz);
+              vec3 h = p0 + d * t;
+              float rr = hkH(vec2(bi * 1.3, fl * 2.1) + sd * 9.0);
+              vec3 paint = mix(vec3(0.86, 0.84, 0.78), mix(vec3(0.75, 0.82, 0.86), vec3(0.88, 0.78, 0.68), step(0.5, fract(rr * 5.0))), step(0.55, rr));
+              vec3 rc;
+              if (t == tz) {
+                rc = paint;
+                // furniture against the back wall, a picture or a door
+                float fur = step(h.x, W * (0.25 + 0.6 * fract(rr * 3.0))) * step(h.x, W) * step(h.y, 0.9 + 0.8 * fract(rr * 11.0)) * step(0.3, fract(rr * 7.0));
+                rc = mix(rc, mix(vec3(0.28, 0.2, 0.14), vec3(0.5, 0.44, 0.38), fract(rr * 17.0)), fur);
+                rc = mix(rc, vec3(0.32, 0.25, 0.2), step(abs(h.x - W * 0.8), 0.45) * step(h.y, 2.1) * step(0.7, rr));
+              } else if (t == tx) {
+                rc = paint * 0.85;
+                rc = mix(rc, vec3(0.45, 0.36, 0.28), step(h.y, 1.9) * step(1.2, h.z) * step(h.z, 2.6) * step(0.45, rr));   // a wardrobe
+              } else {
+                rc = d.y > 0.0 ? vec3(0.9, 0.9, 0.88) : mix(vec3(0.42, 0.33, 0.25), vec3(0.6, 0.58, 0.55), step(0.5, rr));
+              }
+              // light: a ceiling tube in the lit rooms (cool or warm), dim daylight in the rest
+              vec3 lc = mix(vec3(1.0, 0.78, 0.52), vec3(0.86, 0.94, 1.0), step(0.4, r2));
+              float tube = d.y > 0.0 && t == ty ? smoothstep(0.35, 0.1, abs(h.z - D * 0.45)) * smoothstep(W * 0.4, W * 0.2, abs(h.x - W * 0.5)) : 0.0;
+              float fall = 1.0 - 0.55 * clamp(h.z / D, 0.0, 1.0);
+              vec3 inside = rc * fall * mix(vec3(0.09), lc * 1.0, isLit) + tube * isLit * lc * 3.0;
+              // curtains drawn part way, lit from behind in the lit rooms; grilles low on the tong lau
+              float cw = fract(rr * 23.0);
+              float curtain = step(0.45, cw) * (step(bx, wr.x + (wr.y - wr.x) * cw * 0.6) + step(wr.y - (wr.y - wr.x) * (cw - 0.45) * 0.8, bx)) * step(st, 1.5);
+              vec3 cc = mix(vec3(0.8, 0.7, 0.52), mix(vec3(0.55, 0.62, 0.74), vec3(0.75, 0.45, 0.45), step(0.7, fract(rr * 31.0))), step(0.5, fract(rr * 13.0)));
+              inside = mix(inside, cc * mix(vec3(0.12), lc * 0.85, isLit), clamp(curtain, 0.0, 1.0));
+              float grille = st < 0.5 && fl < 2.5 && r1 > 0.35 ? max(step(fract(along / 0.12), 0.12), step(fract(y / 0.45), 0.08)) : 0.0;
+              // the pane itself: dark and glossy (the sky reflects from the PBR specular), the
+              // room shows through it as emitted light
+              col = mix(vec3(0.015, 0.018, 0.02), vec3(0.18, 0.2, 0.2), grille);
+              totalEmissiveRadiance += inside * (1.0 - grille) * (st > 1.5 && st < 2.5 ? 0.6 : 1.0);
+              hkGlass = 1.0 - grille;
             }
-            // curtains and blinds in the dark rooms
-            float curtain = step(0.6, r2) * (1.0 - isLit) * step(st, 1.5);
-            vec3 cc = mix(vec3(0.78, 0.7, 0.55), vec3(0.55, 0.62, 0.72), step(0.82, r2)) * 0.5;
-            col = mix(col, mix(glass, cc, curtain), win);
-            hkGlass = win * (1.0 - curtain);
-            totalEmissiveRadiance += win * isLit * lit * 0.9;
           } else if (hkV > 0.5 && st > 3.5 && st < 4.5) {
-            // shopfront: glazing into a lit shop (the vertex colour is the shop's light),
-            // mullions, a transom; a roller shutter down here and there
+            // --- shopfront: glazing into a deep lit shop (the vertex colour is its light)
+            float shopW = 4.6;
             float sb = fract(along / 2.3);
-            float mull = step(sb, 0.025);
+            float mull = step(sb, 0.02);
             float yy = vHkP.y;
-            float transom = step(3.0, yy) * step(yy, 3.12);
-            float shutter = step(0.84, hkH(vec2(floor(along / 4.6), sd)));
-            float glassA = (1.0 - mull) * (1.0 - transom) * (1.0 - shutter);
-            // inside: a lit ceiling, shelves of goods in all colours, a dim back wall
-            // (small packs on the shelves, darker gaps between them)
-            vec2 gc = vec2(along * 6.5, yy * 7.0);
-            float cell = hkH(floor(gc) + sd * 5.0);
-            float pack = step(0.18, fract(gc.x)) * step(0.12, fract(gc.y)) * step(0.25, cell);
-            vec3 goods = vec3(0.3 + 0.7 * fract(cell * 3.1), 0.25 + 0.6 * fract(cell * 7.3), 0.25 + 0.7 * fract(cell * 13.7));
-            float shelves = step(0.4, yy) * step(yy, 2.25) * step(0.3, fract(along * 0.45 + sd));
-            float ceiling = smoothstep(2.6, 2.9, yy) * (0.7 + 0.3 * step(0.5, fract(along * 0.8)));
-            vec3 inside = wall * (0.12 + ceiling * 1.4 + 0.1 * smoothstep(2.3, 0.3, yy)) + goods * wall * shelves * pack * 0.38;
-            col = mix(vec3(0.16, 0.16, 0.17), wall * 0.12, glassA);
-            totalEmissiveRadiance += inside * glassA * smoothstep(0.05, 0.4, yy);
-            vec3 shut = vec3(0.5, 0.52, 0.52) * (0.82 + 0.18 * step(0.5, fract(yy * 9.0)));
-            col = mix(col, shut, shutter);
-            hkGlass = glassA * 0.6;
-          } else if (hkV > 0.5 && st > 4.5) {
-            // blank party walls and backs: a small window here and there
+            float transom = step(3.0, yy) * step(yy, 3.14);
+            float shopI = floor(along / shopW);
+            float sh = hkH(vec2(shopI, sd));
+            float shutter = step(0.86, sh);
+            float glassA = (1.0 - mull) * (1.0 - transom) * (1.0 - shutter) * step(0.25, yy) * step(yy, 3.0);
+            if (glassA > 0.0) {
+              float W = shopW, H = 3.0, D = 7.0;
+              vec3 p0 = vec3(fract(along / shopW) * W, yy - 0.15, 0.0);
+              vec3 d = rd;
+              float tx = d.x > 0.0 ? (W - p0.x) / d.x : -p0.x / min(d.x, -1e-4);
+              float ty = d.y > 0.0 ? (H - p0.y) / d.y : -p0.y / min(d.y, -1e-4);
+              float tz = D / max(d.z, 1e-4);
+              float t = min(min(tx, ty), tz);
+              vec3 h = p0 + d * t;
+              vec3 rc;
+              vec2 gc;
+              if (t == tz) { gc = h.xy; rc = vec3(0.85); }
+              else if (t == tx) { gc = vec2(h.z, h.y); rc = vec3(0.8); }
+              else { gc = h.xz; rc = d.y > 0.0 ? vec3(1.0) : vec3(0.62, 0.6, 0.56); }
+              // shelves of goods on the walls (small packs in every colour), a counter
+              if (t != ty) {
+                // (shelf bays 0.45 m high; packs of varied width, many muted, a few bright)
+                float row = floor(gc.y / 0.45);
+                float px = gc.x * (6.0 + 6.0 * hkH(vec2(row, sh)));
+                float cell = hkH(vec2(floor(px), row) + sh * 40.0);
+                float inRow = fract(gc.y / 0.45);
+                float pack = step(0.1, fract(px)) * step(0.12, inRow) * step(inRow, 0.3 + 0.6 * cell) * step(0.15, cell) * step(0.3, gc.y) * step(gc.y, 2.3);
+                vec3 goods = vec3(0.3 + 0.7 * fract(cell * 3.1), 0.25 + 0.65 * fract(cell * 7.3), 0.25 + 0.7 * fract(cell * 13.7));
+                goods = mix(vec3(dot(goods, vec3(0.33))), goods, 0.55 + 0.45 * step(0.75, fract(cell * 19.0)));
+                rc = mix(rc * 0.6, goods * 0.8, pack);
+                rc = mix(rc, vec3(0.32, 0.3, 0.28), step(inRow, 0.06) * step(0.3, gc.y) * step(gc.y, 2.4));
+              }
+              float tube = d.y > 0.0 && t == ty ? step(0.85, fract(h.z * 0.7)) : 0.0;
+              float fall = 1.0 - 0.4 * clamp(h.z / D, 0.0, 1.0);
+              vec3 inside = rc * wall * fall * fall * 0.5 + tube * wall * 2.2;
+              totalEmissiveRadiance += inside * glassA;
+            }
+            col = mix(vec3(0.17, 0.17, 0.18), vec3(0.015), glassA);
+            vec3 shut = vec3(0.52, 0.54, 0.54) * (0.8 + 0.2 * step(0.5, fract(yy * 10.0))) * (0.85 + 0.15 * hkN1(vec2(along * 3.0, yy)));
+            col = mix(col, shut, shutter * step(yy, 3.0));
+            hkGlass = glassA;
+          } else if (hkV > 0.5 && st > 5.5 && st < 6.5) {
+            // --- balcony parapet: a solid upstand, then railing bars with the dark balcony behind
+            float yb = fract((vHkP.y - ${SHOP_H.toFixed(3)}) / fh) * fh;
+            float bars = step(0.55, yb) * step(yb, 0.98) * (1.0 - step(fract(along / 0.13), 0.22));
+            col = mix(col, vec3(0.1, 0.1, 0.1), bars * step(0.4, fract(sd * 5.0)));
+          } else if (hkV > 0.5 && st > 4.5 && st < 5.5) {
+            // --- blank party walls and backs: a small window here and there
             float sm = step(0.42, bx) * step(bx, 0.58) * step(0.4, f) * step(f, 0.7) * step(0.86, r1) * step(0.0, y);
-            col = mix(col * 0.92, glass, sm);
+            col = mix(col * 0.92, vec3(0.03), sm);
             hkGlass = sm;
           }
           diffuseColor.rgb = col;
         }`)
       .replace('#include <roughnessmap_fragment>', `#include <roughnessmap_fragment>
-        roughnessFactor = mix(roughnessFactor, 0.28, hkGlass);`);
+        roughnessFactor = mix(roughnessFactor, 0.06, hkGlass);`);
   };
-  m.customProgramCacheKey = () => 'hk-facade-v1';
+  m.customProgramCacheKey = () => 'hk-facade-v2';
   return m;
 }
 
@@ -418,7 +519,30 @@ function buildOne(S, C, atlas) {
     const tw = Math.min(4, (z1 - z0) * 0.4);
     const tz = z0 + 0.6 + R() * Math.max(0, z1 - z0 - tw - 1.2);
     const tx = rx0 + R() * Math.max(0, rx1 - rx0 - 4);
-    B.box(tx, tx + 3.5, top, top + 2.2 + R(), tz, tz + tw, tank);
+    if (R() < 0.55) {
+      // round water tanks on a steel frame
+      const n = 1 + Math.floor(R() * 3), r = 0.8 + R() * 0.4;
+      for (let i = 0; i < n; i++) {
+        const cz = Math.min(z1 - r - 0.4, tz + r + i * (2 * r + 0.3));
+        B.box(tx + 0.4, tx + 0.4 + 2 * r, top, top + 0.6, cz - r, cz + r, col(0x4a4a48));
+        B.cyl(tx + 0.4 + r, cz, r, top + 0.6, top + 2.4 + R() * 0.8, tank, 14);
+      }
+    } else B.box(tx, tx + 3.5, top, top + 2.2 + R(), tz, tz + tw, tank);
+    // a rooftop hut of corrugated sheet on the old blocks
+    if (S.kind === 'tong' && R() < 0.6) {
+      const hz = z0 + 0.5, hw = Math.min(z1 - z0 - 1, 4 + R() * 3);
+      const [hx0, hx1] = X(-D + 2, -D + 6 + R() * 4);
+      B.box(hx0, hx1, top, top + 2.4, hz, hz + hw, col(R() < 0.5 ? 0x8d8a80 : 0x6f7f86), blank);
+    }
+    // a parapet round the roof
+    {
+      const pc = wallCol.clone().multiplyScalar(0.9);
+      const [px0, px1] = X(-D, -(S.setback || 0));
+      const [fx0, fx1] = X(-(S.setback || 0) - 0.2, -(S.setback || 0));
+      B.box(fx0, fx1, top, top + 1.0, z0, z1, pc, blank, { ny: { skip: true } });
+      B.box(px0, px1, top, top + 1.0, z0, z0 + 0.2, pc, blank, { ny: { skip: true } });
+      B.box(px0, px1, top, top + 1.0, z1 - 0.2, z1, pc, blank, { ny: { skip: true } });
+    }
     if (S.kind !== 'tong' && R() < 0.8) {
       const hx = rx0 + 2 + R() * Math.max(0, rx1 - rx0 - 8);
       B.box(hx, hx + 5, top, top + 3.2, z0 + 1, Math.min(z1 - 1, z0 + 6), wallCol.clone().multiplyScalar(0.85), blank);
@@ -446,9 +570,51 @@ function buildOne(S, C, atlas) {
       const [bx0, bx1] = X(0, 0.9);
       B.box(bx0, bx1, y - 0.14, y, z0 + 0.12, z1 - 0.12, par, blank, { [back]: { skip: true } });
       const [qx0, qx1] = X(0.8, 0.9);
-      B.box(qx0, qx1, y, y + 1.05, z0 + 0.12, z1 - 0.12, par, blank, { [back]: { skip: true } });
+      B.box(qx0, qx1, y, y + 1.05, z0 + 0.12, z1 - 0.12, par, blank, { [back]: { skip: true }, [front]: { fac: [ST.rail, fh, 3, S.seed] } });
       // the side walls of the balcony
       for (const zz of [z0 + 0.12, z1 - 0.22]) B.box(bx0, bx1, y, y + 1.05, zz, zz + 0.1, par, blank, { [back]: { skip: true } });
+    }
+  }
+
+  // --- bay windows: glazed boxes 0.55 m out from the residential towers, two bays wide,
+  // on every floor (cells aligned with the facade shader's: world z / bay)
+  if (S.kind === 'resi' && S.seed > 0.3) {
+    const k0 = S.podium && S.setback ? S.podium : 0;
+    const d0 = -(S.podium && S.setback ? S.setback : 0);
+    const b0 = Math.ceil((z0 + 0.8) / S.bay), b1 = Math.floor((z1 - 0.8) / S.bay);
+    const skip = Math.floor(S.seed * 7) % 3;
+    for (let b = b0; b + 2 <= b1; b += 3) {
+      if ((b + skip) % 6 === 0) continue;
+      const za = b * S.bay + 0.04, zb = (b + 2) * S.bay - 0.04;
+      for (let k = k0; k < S.floors; k++) {
+        const yf = SHOP_H + k * fh;
+        const [bx0, bx1] = X(d0, d0 + 0.55);
+        C.bays.box(bx0, bx1, yf + 0.5, yf + fh - 0.25, za, zb, wallCol, [ST.bay, fh, S.bay, S.seed], { [back]: { skip: true }, pz: { fac: blank }, nz: { fac: blank } });
+        // the ledge under it and its hood
+        const [lx0, lx1] = X(d0, d0 + 0.62);
+        C.bays.box(lx0, lx1, yf + 0.42, yf + 0.5, za - 0.05, zb + 0.05, wallCol.clone().multiplyScalar(1.08), blank, { [back]: { skip: true } });
+      }
+    }
+  }
+  // --- under the canopy: fluorescent tubes, and a small lightbox sign per shop sticking out
+  {
+    const swW = s < 0 ? SIDEWALK_W.x1 - SIDEWALK_W.x0 : SIDEWALK_E.x1 - SIDEWALK_E.x0;
+    const nTubes = Math.floor((z1 - z0) / 3);
+    for (let i = 0; i < nTubes; i++) {
+      const zc = z0 + (i + 0.5) * (z1 - z0) / nTubes;
+      const [tx0, tx1] = X(0.5, 0.58);
+      C.tubes.box(tx0, tx1, SHOP_H - 0.06, SHOP_H - 0.01, zc - 0.6, zc + 0.6, WHITE);
+    }
+    const nBox = Math.max(1, Math.round((z1 - z0) / 5));
+    for (let i = 0; i < nBox; i++) {
+      if (R() < 0.35) continue;
+      const zc = z0 + (i + 0.5) * (z1 - z0) / nBox + (R() - 0.5);
+      const out = Math.min(swW - 2.6, 0.9);
+      const [lx0, lx1] = X(0.15, 0.15 + out);
+      const slot = atlas.vert[Math.floor(R() * atlas.vert.length)];
+      // (a short vertical lightbox: the top of a vertical sign's slot)
+      const sl = [slot[0], slot[3] - (slot[3] - slot[1]) * 0.45, slot[2], slot[3]];
+      C.signs.box(lx0, lx1, 2.6, 3.9, zc - 0.1, zc + 0.1, WHITE, FAC0, { pz: { uv: sl }, nz: { uv: sl }, px: { uv: atlas.edge }, nx: { uv: atlas.edge }, py: { uv: atlas.edge }, ny: { uv: atlas.edge } });
     }
   }
 
@@ -460,9 +626,13 @@ function buildOne(S, C, atlas) {
     const bays = Math.floor((z1 - z0) / S.bay);
     const share = S.kind === 'glass' ? 0 : S.kind === 'tong' ? 0.35 : 0.25;
     const maxF = Math.min(S.floors, 40);
+    // (cells the bay windows cover keep clear of units)
+    const hasBays = S.kind === 'resi' && S.seed > 0.3, bb0 = Math.ceil((z0 + 0.8) / S.bay);
     for (let k = k0; k < maxF; k++) for (let b = 0; b < bays; b++) {
       if (R() > share) continue;
-      const zc = z0 + (b + 0.5) * S.bay + (R() - 0.5) * 0.3;
+      const cell = Math.ceil(z0 / S.bay) + b;
+      if (hasBays && cell >= bb0 && (cell - bb0) % 3 < 2) continue;
+      const zc = (Math.ceil(z0 / S.bay) + b + 0.5) * S.bay;
       if (zc < z0 + 0.7 || zc > z1 - 0.7) continue;
       const y = SHOP_H + k * fh + 0.25;
       const d0 = -setback + (S.balcony && k > 0 ? 0.9 : 0);
@@ -523,10 +693,11 @@ export async function buildHkBuildings(scene, pause = null) {
   const facade = facadeMaterial();
   const detailMat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.75 });
   const signMat = new THREE.MeshStandardMaterial({ map: atlas.tex, emissiveMap: atlas.tex, emissive: 0xffffff, emissiveIntensity: 2.2, roughness: 0.45 });
+  const tubeMat = new THREE.MeshBasicMaterial({ color: new THREE.Color(0xf2f8ff).multiplyScalar(2.2) });
   const boardMat = new THREE.MeshStandardMaterial({ map: atlas.tex, emissiveMap: atlas.tex, emissive: 0xffffff, emissiveIntensity: 0.9, roughness: 0.5 });
 
   const edges = [-Z_FAR - 1, ...CROSS_STREETS.map((c) => c.z).sort((a, b) => a - b), Z_FAR + 1];
-  const chunks = edges.slice(0, -1).map((min, i) => ({ min, max: edges[i + 1], base: new Geo(), detail: new Geo(), signs: new Geo(), boards: new Geo() }));
+  const chunks = edges.slice(0, -1).map((min, i) => ({ min, max: edges[i + 1], base: new Geo(), detail: new Geo(), signs: new Geo(), boards: new Geo(), bays: new Geo(), tubes: new Geo() }));
   const footprints = [];
   let tYield = performance.now();
   for (const side of [-1, 1]) {
@@ -552,6 +723,8 @@ export async function buildHkBuildings(scene, pause = null) {
     add(c.detail, detailMat, true, true);
     add(c.signs, signMat, true, true);
     add(c.boards, boardMat, false, false);
+    add(c.bays, facade, true, true);
+    add(c.tubes, tubeMat, false, true);
   }
   group.userData = { footprints, chairs: [], tables: [] };
   scene.add(group);
