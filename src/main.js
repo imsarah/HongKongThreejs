@@ -205,7 +205,14 @@ const people = peopleAssets
 walkWorld.circles.push(...people.colliders, ...traffic.colliders);
 window.__people = people;
 // a traffic car's driver getting out when the player takes the car
-const exitDrivers = createExitDrivers(scene, { heightAt: (x, z) => beach.groundAt(x, z) });
+const exitDrivers = createExitDrivers(scene, {
+  heightAt: (x, z) => beach.groundAt(x, z),
+  getPedestrians: () => [
+    ...(people.agents ? people.agents.filter((a) => !a.hidden).map((a) => ({ x: a.x, z: a.z, r: a.seat ? 0.36 : a.kind === 'skate' ? 0.35 : 0.28 })) : people.colliders),
+    ...(!vehicles.riding ? [{ x: controls.pos.x, z: controls.pos.y, r: 0.32 }] : []),
+  ],
+});
+people.setPedestrians?.(exitDrivers.colliders);
 walkWorld.circles.push(...exitDrivers.colliders);
 window.__exitDrivers = exitDrivers;
 

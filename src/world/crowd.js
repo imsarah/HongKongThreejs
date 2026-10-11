@@ -24,6 +24,7 @@ import { STREET_COLLIDERS, BENCHES } from './street.js';
 import { PALM_TREES } from './palms.js';
 import { QUALITY } from '../quality.js';
 import { hotelLane } from './lanes.js';
+import { freePathSpawn, pedestrianStep } from './pedestrian-spacing.js';
 import { createPerson, playerCharacter, attachSkates, bakeSkateClip, SKATE_LIFT, ik2, measureGrip, gripHand, setWorldQuat } from './mixamo.js';
 
 const TAU = Math.PI * 2;
@@ -227,6 +228,7 @@ export function buildCrowd(scene, assets, { beach, hotels, walker = null, getCar
   const colliders = [];
   const agents = [];
   let vehicles = null;
+  let externalPeople = [];
   const chars = assets.chars;
   const pickChar = (want) => chars[want] ? want : Object.keys(chars)[Math.floor(rnd() * Object.keys(chars).length)];
   const skateClips = new Map();
@@ -334,9 +336,10 @@ export function buildCrowd(scene, assets, { beach, hotels, walker = null, getCar
     for (const B of agents) {
       if (B === A || B.hidden || Math.abs(B.x - A.x) >= 9 || Math.abs(B.z - A.z) >= 9) continue;
       // someone sitting is passed like the chair they sit on (the lanes are planned round them)
-      if (B.seat) out.push({ x: B.x, z: B.z, r: 0.3 });
-      else out.push({ x: B.x, z: B.z, r: B.kind === 'skate' ? 0.35 : R_PERSON, agent: B });
+      if (B.seat) out.push({ x: B.x, z: B.z, r: 0.36, person: true });
+      else out.push({ x: B.x, z: B.z, r: B.kind === 'skate' ? 0.35 : R_PERSON, agent: B, person: true });
     }
+    for (const c of externalPeople) if (c.r > 0) out.push({ x: c.x, z: c.z, r: c.r, person: true });
     grid.near(A.x, A.z, out);
     return out;
   }
@@ -389,9 +392,9 @@ export function buildCrowd(scene, assets, { beach, hotels, walker = null, getCar
 
   function steer(A, dt) {
     const path = A.path;
+    const radius = A.kind === 'skate' ? 0.35 : R_PERSON;
     A.blockBy = null;
     if (A.ghost > 0) A.ghost -= dt;
-    if (A.passT > 0) A.passT -= dt;
     path.at(A.s, q);
     const dx = q.dx * A.dir, dz = q.dz * A.dir, rx = -dz, rz = dx;   // travel dir, right hand
     const look = Math.max(2.8, A.speed * (A.kind === 'skate' ? 2.4 : 2.0));
@@ -435,8 +438,8 @@ export function buildCrowd(scene, assets, { beach, hotels, walker = null, getCar
       const ox = o.x - A.x, oz = o.z - A.z;
       const along = ox * dx + oz * dz, side = ox * rx + oz * rz;
       if (along < -0.2 || along > look) continue;
-      // (a stand-off with someone on a tight lane: shoulders turned, they brush past)
-      const need = o.r + R_PERSON + (o.player ? 0.45 : o.agent ? (A.passT > 0 ? -0.1 : 0.22) : 0.12);
+      // Keep shoulder clearance even during a stand-off on a tight lane.
+      const need = o.r + radius + (o.player ? 0.45 : o.agent ? 0.22 : 0.12);
       // (the other agent's own sidestep: count the one ahead / oncoming)
       if (Math.abs(side) >= need) continue;
       if (along >= best) continue;
@@ -453,7 +456,7 @@ export function buildCrowd(scene, assets, { beach, hotels, walker = null, getCar
       else if (okL) t = toLeft;
       // no room to step round a post / table edge the lane already skirts: squeeze past it
       const noStep = t === null || path.crossings.length && A.state === 'crossing';
-      if (noStep && !o.agent && !o.player && !o.vehicle) {
+      if (noStep && !o.person && !o.player && !o.vehicle) {
         if (A.ghost > 0 || Math.abs(side) >= o.r + 0.15) continue;
         // (judged where the lane itself passes it: a curving lane swings clear of what's dead ahead now)
         path.at(A.s + A.dir * along, q2);
@@ -478,16 +481,15 @@ export function buildCrowd(scene, assets, { beach, hotels, walker = null, getCar
     if (A.dodgeT > 0) latT = A.dodgeLat;
     // hard stop short of the player / others in front (never walk into them)
     for (const o of near) {
-      if (!o.player && !o.agent) continue;
+      if (!o.player && !o.person) continue;
       const ox = o.x - A.x, oz = o.z - A.z, d = Math.hypot(ox, oz);
-      if (d < o.r + R_PERSON + (o.agent && A.passT > 0 ? -0.15 : 0.15) && (ox * dx + oz * dz) > 0) { vT = 0; blocked = true; A.blockBy = o; }
+      if (d < o.r + radius + 0.15 && (ox * dx + oz * dz) > 0) { vT = 0; blocked = true; A.blockBy = o; }
     }
     if (A.state === 'waiting') blocked = false;
     A.blockedT = blocked && vT < 0.15 ? A.blockedT + dt : Math.max(0, A.blockedT - dt * 2);
     // held up by furniture alone (a lane pinched tighter than planned): edge past it
     const bb = A.blockBy;
-    if (A.blockedT > 1.5 && bb && !bb.agent && !bb.player && !bb.vehicle) { A.ghost = 1.5; A.blockedT = 0; }
-    if (A.blockedT > 1.5 && bb?.agent) { A.passT = 2; A.blockedT = 0; }
+    if (A.blockedT > 1.5 && bb && !bb.person && !bb.player && !bb.vehicle) { A.ghost = 1.5; A.blockedT = 0; }
     if (A.blockedT > 5 + A.skip * 0.8 && !path.crossings.length) {
       // blocked for long: turn back
       A.dir *= -1; A.lat = -A.lat; A.blockedT = 0; latT = -latT;
@@ -508,9 +510,24 @@ export function buildCrowd(scene, assets, { beach, hotels, walker = null, getCar
         if (dn < o.r + R_PERSON + 0.08 && dn < Math.hypot(A.x - o.x, A.z - o.z)) { dLat = 0; break; }
       }
     }
+    // Check forward and lateral movement together. Re-evaluate after clipping because a
+    // route can bend during the step; both route progress and sidestep must stop together.
+    const people = near.filter((o) => o.person || o.player);
+    const ds = A.dir * A.speed * dt;
+    let fraction = 1;
+    for (let i = 0; i < 8; i++) {
+      path.at(A.s + ds * fraction, q2);
+      const lat = A.lat + dLat * fraction;
+      const px = q2.x - q2.dz * A.dir * lat, pz = q2.z + q2.dx * A.dir * lat;
+      const f = pedestrianStep(A.x, A.z, px, pz, radius, people);
+      if (f === 1) break;
+      fraction = i === 7 ? 0 : fraction * f;
+    }
+    dLat *= fraction;
     A.lat += dLat;
     A.latT = latT;
-    A.s += A.dir * A.speed * dt;
+    A.s += ds * fraction;
+    if (fraction < 1) { A.speed *= fraction; A.blockedT += dt; }
     if (path.closed) A.s = ((A.s % path.total) + path.total) % path.total;
     path.at(A.s, q);
     const nx = q.dx * A.dir, nz = q.dz * A.dir;
@@ -586,6 +603,24 @@ export function buildCrowd(scene, assets, { beach, hotels, walker = null, getCar
     // never grow over the player (the walker would be stuck inside the circle)
     A.col.r = A.hidden ? 0 : walker ? Math.min(rr, Math.max(0, Math.hypot(walker.pos.x - A.x, walker.pos.y - A.z) - 0.305)) : rr;
   }
+
+  function reserveSpawns() {
+    const placed = agents.filter((a) => !a.path && !a.hidden).map((a) => ({ x: a.x, z: a.z, r: a.seat ? 0.36 : R_PERSON }));
+    if (walker && !vehicles?.riding) placed.push({ x: walker.pos.x, z: walker.pos.y, r: 0.32 });
+    if (vehicles) for (const e of vehicles.list) placed.push(...e.v.circlesWorld);
+    for (const A of agents) {
+      if (!A.path || A.hidden) continue;
+      const radius = A.kind === 'skate' ? 0.35 : R_PERSON;
+      const spawn = freePathSpawn(A.path, A.s, A.dir, A.lat, radius, (x, z) => {
+        const out = [...placed];
+        return grid.near(x, z, out);
+      });
+      if (!spawn) { A.hidden = true; continue; }
+      Object.assign(A, spawn);
+      placed.push({ x: A.x, z: A.z, r: radius });
+    }
+  }
+  if (!shot) reserveSpawns();
 
   // first placement (and the frozen ?shot pose)
   for (const A of agents) {
@@ -671,8 +706,13 @@ export function buildCrowd(scene, assets, { beach, hotels, walker = null, getCar
     const ddx = tx - A.x, ddz = tz - A.z, dd = Math.hypot(ddx, ddz);
     const spd = A.stepT > 0 ? 1.5 : 0.45;
     const move = Math.min(dd, spd * dt);
-    if (dd > 0.02) { A.x += (ddx / dd) * move; A.z += (ddz / dd) * move; }
-    A.moving = dd > 0.05 ? move / Math.max(dt, 1e-3) : 0;
+    let actualMove = move;
+    if (dd > 0.02) {
+      obstaclesFor(A, near);
+      actualMove *= pedestrianStep(A.x, A.z, A.x + ddx / dd * move, A.z + ddz / dd * move, R_PERSON, near.filter((o) => o.person || o.player));
+      A.x += (ddx / dd) * actualMove; A.z += (ddz / dd) * actualMove;
+    }
+    A.moving = dd > 0.05 ? actualMove / Math.max(dt, 1e-3) : 0;
     // face the vehicle while it's about; home to the old heading after
     const face = A.lookW > 0.3 ? Math.atan2(A.lookX - A.x, A.lookZ - A.z) : (A.moving > 0.05 ? Math.atan2(ddx, ddz) : A.home.heading);
     A.heading += wrap(face - A.heading) * (1 - Math.exp(-dt * 4));
@@ -1006,7 +1046,14 @@ export function buildCrowd(scene, assets, { beach, hotels, walker = null, getCar
   return {
     agents, colliders, tris, debug, drivers,
     people: Object.fromEntries(agents.map((a) => [a.name, a])),
-    setVehicles(v) { vehicles = v; },
+    setVehicles(v) {
+      vehicles = v;
+      if (!shot) {
+        reserveSpawns();
+        for (const A of agents) { place(A); A.P.setVisible(!A.hidden); }
+      }
+    },
+    setPedestrians(colliders) { externalPeople = colliders; },
     get playerDriver() { return playerDriver; },
     get drivingPlayer() { return modernDetach ? modernDriver.P : playerDriver; },
     attachDrivers,

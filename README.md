@@ -47,7 +47,7 @@ The only runtime dependency is `three` (0.186). The build uses a relative base, 
 from any sub-path. It runs best on a desktop GPU in a Chromium-based browser, and also runs on
 laptops and phones on a lower quality tier.
 
-Check the shipped car models and driving interactions with:
+Check the shipped cars, driving interactions, traffic and NPC spacing with:
 
 ```sh
 node tools/right-hand-drive-test.mjs
@@ -58,6 +58,9 @@ node tools/car-glass-mobile-test.mjs
 node tools/traffic-sim-test.mjs
 node tools/traffic-visual-test.mjs
 node tools/traffic-startup-test.mjs
+node tools/pedestrian-spacing-test.mjs
+node tools/exit-driver-spacing-test.mjs
+node tools/crowd-spacing-test.mjs
 ```
 
 These check the right-hand cockpit anchors in all eight car models, door sides at different
@@ -72,6 +75,9 @@ overlaps, queued passing in both directions at different frame rates, oncoming r
 way, pedestrian and signal stops, and continuous flow with no vehicle overlaps.
 The browser startup check loads desktop and mobile scenes and reloads with a saved car
 inside a traffic spawn, checking that the saved pose survives and traffic flows around it.
+NPC spacing checks cover duplicate spawn requests, forward and sideways collisions, fast
+steps, and several drivers leaving at the same door. The browser crowd check runs ten
+simulated minutes on every quality tier and checks opposing walkers on a shared route.
 
 Phone and tablet views keep enough horizontal field of view in portrait, with a driving HUD,
 readable touch buttons of at least 44 px, and a radio card that fits around the minimap.
@@ -263,6 +269,10 @@ Mixamo crowd and open-world driving ([CHANGELOG.md](CHANGELOG.md) has its full h
   quality tiers. Character conversion excludes the unskinned bone-display helpers that
   previously appeared as large white triangles at distance. See [mixamo.js](src/world/mixamo.js)
   and the [character sources](assets/mixamo/MANIFEST.md).
+  Walkers reserve separate, clear positions on their routes when the scene loads. Each
+  forward step and sidestep is checked together so people cannot walk through each other
+  or stack at corners. Drivers getting out also reserve separate spots and avoid the crowd;
+  both groups see each other's live positions. See [pedestrian-spacing.js](src/world/pedestrian-spacing.js).
 - **Third-person walking and running.** A visible player body turns toward the direction of
   movement and blends idle, walk and run animations according to speed. V or C switches
   between first person and a camera over the right shoulder; the camera pulls closer when

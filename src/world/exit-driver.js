@@ -7,6 +7,7 @@
 import * as THREE from 'three';
 import { SIDEWALK_W, SIDEWALK_E } from './layout.js';
 import { contactTexture } from './crowd.js';
+import { isFree, pedestrianStep } from './pedestrian-spacing.js';
 
 const EXIT_T = 0.9, R = 0.3;
 // the driver's door swinging open while they climb out and shut behind them (the bodies have
@@ -16,8 +17,9 @@ const _m = new THREE.Matrix4(), _p = new THREE.Vector3(), _q = new THREE.Quatern
 const wrap = (a) => Math.atan2(Math.sin(a), Math.cos(a));
 const smooth = (t) => t * t * (3 - 2 * t);
 
-export function createExitDrivers(scene, { heightAt, max = 3 } = {}) {
+export function createExitDrivers(scene, { heightAt, max = 3, getPedestrians = () => [] } = {}) {
   const live = [];
+  const obstaclesFor = (D = null) => [...getPedestrians(), ...live.filter((d) => d !== D).map((d) => d.col)].filter((c) => c?.r > 0);
   // a fixed pool of collider circles (the walker and the vehicles see them; r 0 when unused)
   const colliders = Array.from({ length: max }, () => ({ x: 0, z: 0, r: 0, person: true }));
   const frustum = new THREE.Frustum(), pm = new THREE.Matrix4(), sph = new THREE.Sphere();
@@ -63,6 +65,14 @@ export function createExitDrivers(scene, { heightAt, max = 3 } = {}) {
     // out beside the door, a step clear of the body
     const ox = door.x - car.x, oz = door.z - car.z, ol = Math.hypot(ox, oz) || 1;
     const out = { x: door.x + (ox / ol) * 0.35, z: door.z + (oz / ol) * 0.35 };
+    // Reserve distinct places beside the door, including drivers still climbing out.
+    const occupied = obstaclesFor();
+    let found = false;
+    for (let i = 0; i <= 16 && !found; i++) for (const sign of i ? [-1, 1] : [1]) {
+      const x = out.x - oz / ol * i * 0.75 * sign, z = out.z + ox / ol * i * 0.75 * sign;
+      if (isFree(x, z, R, occupied)) { out.x = x; out.z = z; found = true; break; }
+    }
+    if (!found) { P.mixer.stopAllAction(); P.root.removeFromParent(); P.home = null; return null; }
     // the nearer sidewalk, and the way along it away from whoever took the car
     const f = face();
     const sideE = Math.abs(out.x - SIDEWALK_E.x0) < Math.abs(out.x - SIDEWALK_W.x1);
@@ -94,6 +104,7 @@ export function createExitDrivers(scene, { heightAt, max = 3 } = {}) {
       slot.shadow.visible = true;
     }
     live.push(D);
+    Object.assign(D.col, { x: out.x, z: out.z, r: R });
     return D;
   }
 
@@ -157,8 +168,18 @@ export function createExitDrivers(scene, { heightAt, max = 3 } = {}) {
           if (d < 0.6 && D.pts.length > 1) D.pts.shift();
           else if (d > 1e-3) {
             const st = Math.min(d, D.speed * dt);
-            D.x += (dx / d) * st; D.z += (dz / d) * st;
-            D.heading += wrap(Math.atan2(dx, dz) - D.heading) * (1 - Math.exp(-dt * 4));
+            const occupied = obstaclesFor(D);
+            let mx = dx / d * st, mz = dz / d * st;
+            const fraction = pedestrianStep(D.x, D.z, D.x + mx, D.z + mz, R, occupied);
+            mx *= fraction; mz *= fraction;
+            // Step aside if someone blocks the route instead of walking into their body.
+            if (fraction < 1) for (const side of [1, -1]) {
+              const sx = -dz / d * st * side, sz = dx / d * st * side;
+              if (pedestrianStep(D.x, D.z, D.x + sx, D.z + sz, R, occupied) === 1) { mx = sx; mz = sz; break; }
+            }
+            D.x += mx; D.z += mz;
+            D.speed = Math.hypot(mx, mz) / Math.max(dt, 1e-3);
+            D.heading += wrap(Math.atan2(mx, mz) - D.heading) * (1 - Math.exp(-dt * 4));
           }
         }
         const w = smooth(Math.min(1, D.speed / 0.6));
@@ -180,7 +201,7 @@ export function createExitDrivers(scene, { heightAt, max = 3 } = {}) {
         sh.scale.setScalar(Math.max(0.01, on));
       }
       D.P.mixer.update(dt);
-      if (D.col) { D.col.x = D.x; D.col.z = D.z; D.col.r = D.phase === 'exit' ? 0 : R; }
+      if (D.col) { D.col.x = D.phase === 'exit' ? D.out.x : D.x; D.col.z = D.phase === 'exit' ? D.out.z : D.z; D.col.r = R; }
     }
   }
 
