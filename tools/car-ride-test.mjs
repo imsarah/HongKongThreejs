@@ -33,7 +33,7 @@ const walker = {
 const camera = new THREE.PerspectiveCamera(50, 16 / 9, 0.05, 2000);
 // a stand-in for the hero model: the eye rides at the anchor offset in the car frame
 const root = new THREE.Group(), eye = new THREE.Object3D();
-eye.position.set(0.42, 1.18, -0.38);
+eye.position.set(-0.42, 1.18, -0.38);
 root.add(eye);
 let applied = 0;
 const car = {
@@ -56,6 +56,7 @@ walker.pos.set(CAR.x - 2.4, CAR.z); walker.yaw = -Math.PI / 2;
 camera.position.set(walker.pos.x, 1.85, walker.pos.y); camera.rotation.set(0, walker.yaw, 0);
 V.update(1 / 60);
 check('near = car from the sidewalk', V.near === 'car', { near: V.near });
+check('sidewalk door is the right-hand driver door', V.nearDoor === 'driver', { door: V.nearDoor });
 listeners.keydown.forEach((fn) => fn({ code: 'KeyE', repeat: false }));
 check('E mounts the car', V.riding && V.current === cv, { riding: V.riding });
 let caught = null;
@@ -64,6 +65,8 @@ check('the engine catches after the starter (~1 s)', caught > 0.9 && caught < 1.
 check('audio got car states (cranking, then running)', audioStates.some((s) => s.kind === 'car' && !s.engineOn) && audioStates.at(-1).engineOn, { n: audioStates.length });
 const eyeY = camera.position.y;
 check('camera at the driver eye (~1.18 m above the road)', eyeY > 1.08 && eyeY < 1.3, { y: +eyeY.toFixed(3) });
+const rightOffset = (camera.position.x - cv.x) * Math.cos(cv.yaw) - (camera.position.z - cv.z) * Math.sin(cv.yaw);
+check('convertible camera sits on the car\'s right', rightOffset > 0.3, { rightOffset });
 // drive: W for 6 s
 const r = V.simulate(['KeyW'], 6);
 check('W drives it down the west lane (south)', cv.z > CAR.z + 20 && r.maxSpeed > 8, { z: +cv.z.toFixed(1), max: r.maxSpeed, gear: cv.gear });

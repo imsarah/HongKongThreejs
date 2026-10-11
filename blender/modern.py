@@ -137,7 +137,7 @@ def greenhouse(kind, B, lod, glass_part, gl_mat):
     us = [u for u in us if zR <= u <= zA]
     sfr = [0, 0.12, 0.4, 0.7, 0.9, 1.0] if lod == 0 else [0, 0.5, 1.0]
     tfr = [0.1, 0.4, 0.7, 1.0] if lod == 0 else [0.5, 1.0]
-    ns, nc, nt = len(sfr) - 1, (3 if lod == 0 else 2), len(tfr)
+    ns, nc, nt = len(sfr) - 1, (5 if lod == 0 else 3), len(tfr)
     rings, bands = [], []
     for u in us:
         y = roof_y(u)
@@ -173,7 +173,9 @@ def greenhouse(kind, B, lod, glass_part, gl_mat):
         uc = (us[i] + us[i + 1]) / 2
         for j in range(n - 1):
             b = {bands[i][j], bands[i][j + 1]}
-            if b == {'top'} or (b == {'corner', 'top'} and False):
+            if b == {'top'} or ('corner' in b and 'side' not in b):
+                # The curved shoulder of the windscreen is glass too. Keep only the
+                # outer corner segment as the pillar, rather than the whole roof curve.
                 if zRr + 0.02 < uc < zRf - 0.02:
                     c = 'paint'
                 else:
@@ -186,27 +188,38 @@ def greenhouse(kind, B, lod, glass_part, gl_mat):
             else:
                 c = 'paint'
             cls[i][j] = c
-    # frit / chrome surround: glass faces touching sheet metal
+    # Frit / chrome surround: a narrow physical strip along glass edges. Colouring an
+    # entire neighbouring grid cell made the border span up to 30% of the windscreen.
     frit = k.get('frit', 'trim')
-    out = [[c for c in row] for row in cls]
+    border_width = 0.006 if frit == 'chrome' else 0.012
+    names = {'glass': gl_mat, 'paint': 'paint', 'pillar': 'trim', 'trim': 'trim', 'chrome': 'chrome'}
+    gh = Part(kind + '_gh')
     for i in range(nst - 1):
         for j in range(n - 1):
+            a, b = rings[i][j], rings[i][j + 1]
+            c, d = rings[i + 1][j], rings[i + 1][j + 1]
             if cls[i][j] != 'glass':
+                gh.grid([[a, b], [c, d]], mat=names[cls[i][j]], uv_tile=1)
                 continue
-            for di, dj in ((1, 0), (-1, 0), (0, 1), (0, -1)):
-                a, b = i + di, j + dj
-                if 0 <= a < nst - 1 and 0 <= b < n - 1 and cls[a][b] in ('paint',):
-                    out[i][j] = frit
-    names = {'glass': gl_mat, 'paint': 'paint', 'pillar': 'trim', 'trim': 'trim', 'chrome': 'chrome'}
 
-    def fmat(i, j):
-        if out[i][j] != 'glass':
-            return names[out[i][j]]
-        # the windscreen (a lighter tint than the side and rear glass)
-        return '__screen' if (us[i] + us[i + 1]) / 2 > zRf else '__glass'
-    gh = Part(kind + '_gh')
-    f = gh.grid(rings, face_mat=fmat, uv_tile=1)
-    orient(gh, f, lambda c: Vector((0, c.y, belt)))
+            def metal(di, dj):
+                ii, jj = i + di, j + dj
+                return 0 <= ii < nst - 1 and 0 <= jj < n - 1 and cls[ii][jj] != 'glass'
+
+            u0, u1, v0, v1 = metal(-1, 0), metal(1, 0), metal(0, -1), metal(0, 1)
+            du = min(0.25, border_width / max(1e-6, ((c - a).length + (d - b).length) / 2))
+            dv = min(0.25, border_width / max(1e-6, ((b - a).length + (d - c).length) / 2))
+            uu = [0] + ([du] if u0 else []) + ([1 - du] if u1 else []) + [1]
+            vv = [0] + ([dv] if v0 else []) + ([1 - dv] if v1 else []) + [1]
+            pane = [[a.lerp(c, u).lerp(b.lerp(d, u), v) for v in vv] for u in uu]
+            glass_mat = '__screen' if (us[i] + us[i + 1]) / 2 > zRf else '__glass'
+
+            def fmat(ii, jj):
+                edge = (u0 and ii == 0) or (u1 and ii == len(uu) - 2) or (v0 and jj == 0) or (v1 and jj == len(vv) - 2)
+                return frit if edge else glass_mat
+
+            gh.grid(pane, face_mat=fmat, uv_tile=1)
+    orient(gh, list(gh.bm.faces), lambda c: Vector((0, c.y, belt)))
     # glass faces move to the glass part (own object, own material)
     for tag, mat in (('__glass', gl_mat), ('__screen', 'windshield')):
         if tag not in gh.mats:
@@ -220,7 +233,8 @@ def greenhouse(kind, B, lod, glass_part, gl_mat):
             nf.smooth = True
         bmesh.ops.delete(gh.bm, geom=gfaces, context='FACES_ONLY')
         gh.mats[gi] = 'trim'
-    gh.cells = out
+    # The inner shell follows the roof and pillars; the glass frit is only 6-12 mm wide.
+    gh.cells = cls
     return gh, roof_y, rings
 
 
@@ -368,7 +382,7 @@ def wheel_frame(kind):
     """rim centre and the wheel frame in blender space: X = car left, Y = up in the rim plane,
     Z = down the column (away from the driver, into the dash); the hero's steering_wheel frame"""
     k = K[kind]
-    c = V(0.36 if kind != 'coupe' else 0.38, k['belt'] + 0.02, k['zA'] - 0.42)
+    c = V(-0.36 if kind != 'coupe' else -0.38, k['belt'] + 0.02, k['zA'] - 0.42)
     X = V(1, 0, 0)
     Y = V(0, 0.85, 0.5).normalized()
     return c, X, Y, X.cross(Y)
@@ -889,7 +903,7 @@ def build(kind, lod, coll):
         # the wheel rim at ten and two (children of the wheel pivot, so they turn with it)
         fl = 0.42 if kind != 'pickup' else 0.55
         fu = k['zA'] - (0.95 if kind != 'coupe' else 0.85)
-        sw_c = V(0.36 if kind != 'coupe' else 0.38, k['belt'] + 0.02, k['zA'] - 0.42)
+        sw_c, _, _, _ = wheel_frame(kind)
         pel = V(C(sw_c)[0], fl + 0.3, fu - 0.36)
         empty(f'{kind}_driver_pelvis', pel, root, size=0.1)
         # first-person eye: 0.62 m over the hips, 5 cm back, kept 8 cm under the headliner

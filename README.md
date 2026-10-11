@@ -21,7 +21,7 @@ rules, the light and the controls. Nothing of Miami is left on screen. See
 [Where it came from](#where-it-came-from) for what was kept and what was replaced.
 
 The buildings, signs, street and every sound are generated in code at load time. The only
-files the scene loads are Ocean Drive's car models, built in Blender for that project, the
+files the scene loads are Ocean Drive's Blender car models, adapted here for right-hand drive, the
 Mixamo people and their animations, Poly Haven CC0 texture scans for the road, paving,
 facades, concrete details and shop floors, a Poly Haven urban HDRI for environment lighting,
 and two Poly Haven normal maps for the car interiors. The city scans include
@@ -47,6 +47,17 @@ The only runtime dependency is `three` (0.186). The build uses a relative base, 
 from any sub-path. It runs best on a desktop GPU in a Chromium-based browser, and also runs on
 laptops and phones on a lower quality tier.
 
+Check the shipped car models and driving interactions with:
+
+```sh
+node tools/right-hand-drive-test.mjs
+node tools/car-ride-test.mjs
+node tools/any-car-test.mjs
+```
+
+These check the right-hand cockpit anchors in all eight car models, door sides at different
+headings, driver-camera placement, and the convertible and parked-car driving flows.
+
 ## Controls
 
 | Action | Keyboard and mouse | Touch |
@@ -67,6 +78,10 @@ laptops and phones on a lower quality tier.
 | Back to the nearest road (stuck) | R (or Backspace) | |
 | Mute | M | Mute button |
 | Release the pointer | Esc | |
+
+All cars are right-hand drive: the driver's door is on the right when facing forward.
+Either door can be used to enter a parked car; the passenger side slides you across to the
+driver's seat.
 
 The last car you got out of stays where you left it, across reloads (`localStorage`
 `ocean-drive.car`, the key kept from Ocean Drive); the minimap marks it.
@@ -121,6 +136,9 @@ The last car you got out of stays where you left it, across reloads (`localStora
   pedestrians, for the Lee Garden Road signal and for you. About a third of them are red taxis
   with a lit TAXI roof sign. Every car carries a Hong Kong plate: black on yellow at the rear,
   black on white at the front (the numbers are invented).
+- **Right-hand-drive cars.** The convertible and all seven modern body styles put the steering
+  wheel, instruments, pedals, driver and first-person camera on the right. Modern cars have
+  narrow windscreen borders and slimmer front pillars for a clearer view from the seat.
 - **People.** Mixamo characters walk and hurry along both sidewalks, stand on the phone outside
   the shops, and sit in every traffic car. They step out of a car's way.
 - **You.** First person, or third person (V): your character turns to face where you're going
@@ -201,8 +219,13 @@ Mixamo crowd and open-world driving ([CHANGELOG.md](CHANGELOG.md) has its full h
   parked-car headings change together. About a third of the moving cars are red taxis with
   illuminated TAXI roof signs. Cars receive invented Hong Kong registration plates, white
   at the front and yellow at the rear, and the speedometer defaults to km/h. The lifeguard
-  ATV is removed and the bike is placed on the east sidewalk. The car models and driving
-  simulation remain Ocean Drive's. See [traffic.js](src/world/traffic.js),
+  ATV is removed and the bike is placed on the east sidewalk. Ocean Drive's car models are
+  rebuilt for right-hand drive: cockpit controls, seated characters, pedal animation, camera
+  anchors and driver-door interactions move together. The modern cars' windscreen borders
+  use narrow strips along the glass edges (12 mm for black trim, 6 mm for chrome), and the
+  front pillars leave more of the curved windscreen transparent. Both detail levels are
+  rebuilt; the driving simulation is retained. See [hero.py](blender/hero.py),
+  [modern.py](blender/modern.py), [traffic.js](src/world/traffic.js),
   [cars-glb.js](src/world/cars-glb.js) and [hk-plates.js](src/world/hk-plates.js).
 - **Crowd and player characters.** Mixamo's Josh, Shannon, Suzie and Martha are added as the
   main pedestrians and drivers, alongside some retained characters. Suzie is the player
@@ -245,8 +268,6 @@ Kong brief after it.
 - **The real map.** The street is still Ocean Drive's straight road with side streets from the
   west. Building the real Causeway Bay layout (the bend of Hennessy Road, Yee Wo Street, the
   blocks round Times Square) needs an OpenStreetMap export of the area.
-- **Cars.** They are Ocean Drive's models, so their steering wheels are on the left. Hong Kong
-  cars are right-hand drive.
 - **Sound, birds and music.** Some of Ocean Drive's ambience code is still in place (waves,
   gulls and the bossa nova station). A city soundscape (crossing beeps, tram bells, the hum of
   the street) is still to do.
@@ -272,7 +293,7 @@ src/
   player/          walker (first / third person, running), avatar, touch controls
   ui/              driving HUD, minimap, radio card
   audio/           synthesis, spatial audio, car, music, radio, footsteps
-blender/           the car models (Ocean Drive's): Python build scripts and cars.blend
+blender/           adapted right-hand-drive car models: Python build scripts and cars.blend
 public/models/     the car and people GLBs
 tools/             Playwright capture and test harnesses (from Ocean Drive)
 ```

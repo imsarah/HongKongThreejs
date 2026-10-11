@@ -852,12 +852,12 @@ export function buildCrowd(scene, assets, { beach, hotels, walker = null, getCar
     }
   }
   // Feet in the convertible's footwell (car-local m; flat floor y 0.455 to z 0.27, then the toe
-  // board; the throttle is floor-hinged at z 0.28, its pad rising ~48 deg to z 0.44 at x 0.28;
-  // the hanging brake pad at x 0.45): the right foot heel-on-hinge along the throttle, over
+  // board; the throttle is floor-hinged at z 0.28, its pad rising ~48 deg to z 0.44 at x -0.56;
+  // the hanging brake pad at x -0.39): the right foot heel-on-hinge along the throttle, over
   // on the brake when braking; the left resting on the floor, toes up the toe board
   const FEET = {
-    Right: { ankle: [0.285, 0.6, 0.275], toe: [0.285, 0.655, 0.405], knee: [-0.2, 1, 0.3] },
-    Left: { ankle: [0.53, 0.54, 0.185], toe: [0.535, 0.5, 0.33], knee: [0.22, 1, 0.3] },
+    Right: { ankle: [-0.555, 0.6, 0.275], toe: [-0.555, 0.655, 0.405], knee: [-0.2, 1, 0.3] },
+    Left: { ankle: [-0.31, 0.54, 0.185], toe: [-0.305, 0.5, 0.33], knee: [0.22, 1, 0.3] },
   };
   const BRAKE_DX = 0.165;
   function feetOnPedals(P, frame, st, v, dt) {

@@ -1,7 +1,7 @@
 # Geometry helpers for the Ocean Drive car generator (run inside Blender 5.x).
-# Car coordinates: s = lateral (+ = left / driver side), h = up, u = forward (m).
+# Car coordinates: s = lateral (+ = left, - = right / driver side), h = up, u = forward (m).
 # Blender: front of the car points to -Y, left side to +X, so the glTF export (+Y up)
-# lands with the nose on +Z and the driver side on +X, as the three.js scene expects.
+# lands with the nose on +Z and the driver side on -X, as the three.js scene expects.
 import bpy, bmesh, math
 from mathutils import Vector, Matrix
 from mathutils.bvhtree import BVHTree

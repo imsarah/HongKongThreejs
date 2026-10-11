@@ -205,7 +205,7 @@ export function shared() {
     headRings.push(new THREE.TorusGeometry(0.095, 0.022, 8, 20).translate(s * dx, 0.73, 2.57));
     heads.push(new THREE.SphereGeometry(0.09, 16, 8, 0, Math.PI * 2, 0, Math.PI / 2).rotateX(Math.PI / 2).scale(1, 1, 0.4).translate(s * dx, 0.73, 2.565));
   }
-  const gauge = new THREE.CylinderGeometry(0.1, 0.1, 0.02, 20).rotateX(Math.PI / 2 - 0.4).translate(0.42, 0.97, 0.52);
+  const gauge = new THREE.CylinderGeometry(0.1, 0.1, 0.02, 20).rotateX(Math.PI / 2 - 0.4).translate(-0.42, 0.97, 0.52);
   const chromeGeo = mergeGeometries([bumperF, bumperR, spear(1), spear(-1), beltTrim(1), beltTrim(-1), frame, ...grilleBars, ...headRings, gauge]
     .map((g) => { g = g.index ? g.toNonIndexed() : g; g.deleteAttribute('uv'); return g; }));
 
@@ -233,9 +233,9 @@ export function shared() {
   ];
   const seatGeo = mergeGeometries(seatParts);
   const bootGeo = new RoundedBoxGeometry(1.72, 0.16, 0.5, 4, 0.07).translate(0, 0.97, -1.46);    // tan canvas boot over the folded top
-  const wheelGeo = new THREE.TorusGeometry(0.21, 0.022, 10, 32).rotateX(0.45).translate(0.42, 1.0, 0.36);
-  const column = new THREE.CylinderGeometry(0.022, 0.03, 0.42, 8).rotateX(Math.PI / 2 - 0.45).translate(0.42, 0.93, 0.5);
-  const spokes = [0, 2.1, 4.2].map((a) => new THREE.BoxGeometry(0.2, 0.012, 0.012).translate(0.1, 0, 0).rotateZ(a).rotateX(0.45).translate(0.42, 1.0, 0.36));
+  const wheelGeo = new THREE.TorusGeometry(0.21, 0.022, 10, 32).rotateX(0.45).translate(-0.42, 1.0, 0.36);
+  const column = new THREE.CylinderGeometry(0.022, 0.03, 0.42, 8).rotateX(Math.PI / 2 - 0.45).translate(-0.42, 0.93, 0.5);
+  const spokes = [0, 2.1, 4.2].map((a) => new THREE.BoxGeometry(0.2, 0.012, 0.012).translate(0.1, 0, 0).rotateZ(a).rotateX(0.45).translate(-0.42, 1.0, 0.36));
   const darkGeo = mergeGeometries([
     column,
     new THREE.BoxGeometry(1.7, 0.18, 4.6).translate(0, 0.2, 0),                            // chassis: dark core under the car

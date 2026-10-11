@@ -75,10 +75,10 @@ export function findSpot(world, x, z, { level = null, maxR = 6, avoid = [], acce
   return null;
 }
 
-// a car's door points (sim local -x is the driver's side), as vehicles/index.js doors()
+// Right-hand drive: sim local +x is the driver's side (model local -x).
 export function doorPoints(pose, lz, width) {
   const s = Math.sin(pose.yaw), c = Math.cos(pose.yaw), out = width / 2 + 0.45;
-  return [[-out, 'driver'], [out, 'passenger']].map(([lx, side]) => ({ x: pose.x + lx * c + lz * s, z: pose.z - lx * s + lz * c, side }));
+  return [[out, 'driver'], [-out, 'passenger']].map(([lx, side]) => ({ x: pose.x + lx * c + lz * s, z: pose.z - lx * s + lz * c, side }));
 }
 
 // next to a car: at the door on the higher (sidewalk) side if it is clear, facing the car

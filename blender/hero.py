@@ -18,12 +18,13 @@ LAMP_S, LAMP_H = 0.72, 0.785   # headlamp centres
 GR_W, GR_H = 0.63, 0.59        # grille half width / centre height (fills the width between the lamps)
 # driver's station (car coords s, h, u): a real seated eye well behind the wheel, the hub on
 # a column raked 30 deg below horizontal, the dial cluster in a hooded pod above the hub
-EYE = (0.42, 1.18, -0.38)
-HUB = (0.42, 0.90, 0.24)
+DRIVER_S = -0.42           # right-hand drive (+s is the car's left)
+EYE = (DRIVER_S, 1.18, -0.38)
+HUB = (DRIVER_S, 0.90, 0.24)
 COL_ANG = math.radians(30)
 RIM_R = 0.215
-SPEEDO = (0.42, 0.90, 0.566, 0.066)   # s, h, u (dial face), radius
-AUX = [('gauge_fuel', 0.42 + 0.13), ('gauge_temp', 0.42 - 0.13)]
+SPEEDO = (DRIVER_S, 0.90, 0.566, 0.066)   # s, h, u (dial face), radius
+AUX = [('gauge_fuel', DRIVER_S + 0.13), ('gauge_temp', DRIVER_S - 0.13)]
 AUX_H, AUX_R = 0.895, 0.03
 
 
@@ -563,7 +564,7 @@ DASH_B = [(0.672, 0.912), (0.662, 0.95), (0.60, 1.004), (0.50, 1.036), (0.462, 1
 
 # feet: heel (s, h, u), toe pitch above horizontal, yaw (+ toward the car's left): where a
 # driver's right foot rests on the throttle treadle (places the pedal)
-FEET = {'L': ((0.585, 0.462, 0.17), math.radians(20), 0.12), 'R': ((0.30, 0.462, 0.22), math.radians(33), -0.05)}
+FEET = {'L': ((DRIVER_S + 0.165, 0.462, 0.17), math.radians(20), 0.12), 'R': ((DRIVER_S - 0.12, 0.462, 0.22), math.radians(33), -0.05)}
 
 
 def foot_frame(side):
@@ -702,11 +703,11 @@ def build_dash(part, glass, lod):
     frame = [V(C(p)[0], shelf_h(C(p)[2]) + 0.004, C(p)[2]) for p in frame]
     sweep(part, frame, tube_prof(0.004, 6), mat='chrome', closed_path=True, up=(0, 0, 1))
     # light / wiper knobs either side of the pod, glovebox door on the passenger side
-    for s in (0.70, 0.77, 0.12):
+    for s in (-0.70, -0.77, -0.12):
         knob(V(s, 0.845, 0.528), r=0.012, depth=0.016)
-    box(part, V(-0.45, 0.866, 0.524), (0.3, 0.092, 0.006), mat='chrome', bevel=0.003)
-    box(part, V(-0.45, 0.866, 0.520), (0.28, 0.076, 0.004), mat='paint', bevel=0.002)
-    lathe(part, [(0.0, 0.0), (0.012, 0.0), (0.011, 0.006), (0.0, 0.008)], 16, V(-0.45, 0.895, 0.517), V(0, 0, -1), mat='chrome')
+    box(part, V(0.45, 0.866, 0.524), (0.3, 0.092, 0.006), mat='chrome', bevel=0.003)
+    box(part, V(0.45, 0.866, 0.520), (0.28, 0.076, 0.004), mat='paint', bevel=0.002)
+    lathe(part, [(0.0, 0.0), (0.012, 0.0), (0.011, 0.006), (0.0, 0.008)], 16, V(0.45, 0.895, 0.517), V(0, 0, -1), mat='chrome')
     # slim column shifter: from a collar under the wheel, angled up and out to the right,
     # ahead of the rim plane (seen through the wheel), an ivory knob on the end
     p0 = hub + Z * 0.078 - X * 0.03
@@ -719,7 +720,7 @@ def build_dash(part, glass, lod):
     lathe(part, [(0.0, -0.004), (0.009, -0.002), (0.012, 0.012), (0.01, 0.024), (0.0, 0.028)], 14, p2, ax, mat='ivory')
     # wide engine-turned band across the dash face between chrome beads (broken round the
     # dial pod), the radio and glovebox standing on it
-    for s0, s1 in ((-0.85, 0.165), (0.675, 0.85)):
+    for s0, s1 in ((-0.85, HUB[0] - 0.255), (HUB[0] + 0.255, 0.85)):
         n = max(2, int((s1 - s0) / 0.05))
         hb = [0.842, 0.873, 0.905]
         rows = [[V(s0 + (s1 - s0) * i / n, h, lerp(0.535, 0.525, (h - 0.815) / 0.115) - 0.004) for h in hb] for i in range(n + 1)]
@@ -730,7 +731,7 @@ def build_dash(part, glass, lod):
                   [(0, -0.004), (0.003, -0.0025), (0.004, 0), (0.003, 0.0025), (0, 0.004)], up=(0, -1, 0))
     # a row of chrome pull knobs under the dial pod (lights, wipers, choke, cigar lighter)
     for k in range(5):
-        c = V(0.28 + 0.07 * k, 0.772, 0.548)
+        c = V(DRIVER_S - 0.14 + 0.07 * k, 0.772, 0.548)
         box(part, c + V(0, 0, 0.004), (0.03, 0.022, 0.004), mat='chrome', bevel=0.0015)
         lathe(part, [(0.0, 0.0), (0.006, 0.0), (0.006, 0.012), (0.011, 0.014), (0.012, 0.02), (0.01, 0.026), (0.0, 0.027)],
               14, c, V(0, 0, -1), mat='chrome')
@@ -754,13 +755,13 @@ def build_dash(part, glass, lod):
     # pedals: the brake pad hanging on its arm from under the dash, the throttle treadle
     # under the right shoe; chrome-rimmed, ribbed rubber
     nb = V(0, 0.5, -0.866)
-    bc = V(0.45, 0.635, 0.42)
+    bc = V(DRIVER_S + 0.03, 0.635, 0.42)
     rb = Matrix.Rotation(0.52, 3, 'X')
     box(part, bc, (0.095, 0.07, 0.016), mat='rubber', bevel=0.006, rot=rb)
     box(part, bc + rb @ V(0, 0, 0.004), (0.105, 0.08, 0.01), mat='chrome', bevel=0.004, rot=rb)
     for k in range(4):
         box(part, bc + rb @ V(0, -0.024 + 0.016 * k, -0.009), (0.08, 0.004, 0.003), mat='chrome', rot=rb)
-    sweep(part, [bc + V(0, 0.02, 0.012), V(0.45, 0.69, 0.46), V(0.45, 0.735, 0.53), V(0.45, 0.75, 0.6)], tube_prof(0.009, 8),
+    sweep(part, [bc + V(0, 0.02, 0.012), V(DRIVER_S + 0.03, 0.69, 0.46), V(DRIVER_S + 0.03, 0.735, 0.53), V(DRIVER_S + 0.03, 0.75, 0.6)], tube_prof(0.009, 8),
           mat='brushed', up=(1, 0, 0))
     o, left, fw, n = foot_frame('R')
     gc = o + fw * 0.16 - n * 0.006
@@ -770,7 +771,7 @@ def build_dash(part, glass, lod):
         box(part, gc + fw * (-0.075 + 0.025 * k) + n * 0.0065, (0.06, 0.003, 0.005), mat='brushed', rot=rg)
     box(part, gc - fw * 0.1, (0.05, 0.02, 0.02), mat='brushed', bevel=0.006, rot=rg)
     # parking brake: a chrome T handle under the dash, left of the column
-    pk = V(0.74, 0.755, 0.505)
+    pk = V(DRIVER_S + 0.32, 0.755, 0.505)
     sweep(part, [pk, pk + V(0, 0.01, 0.06)], tube_prof(0.007, 8), mat='brushed', up=(1, 0, 0))
     box(part, pk + V(0, -0.012, -0.004), (0.085, 0.026, 0.016), mat='chrome', bevel=0.007)
     box(part, pk + V(0, 0.018, 0.058), (0.04, 0.03, 0.006), mat='chrome', bevel=0.002)
@@ -956,10 +957,10 @@ def windscreen(part_chrome, part_glass, caster, lod):
             part_glass.grid(quad, mat='screen', uv_tile=1)
             sweep(part_chrome, [t, rt, rb], [(0.006 * math.cos(a), 0.006 * math.sin(a)) for a in [2 * math.pi * k / 8 for k in range(8)]], mat='chrome', up=(sg, 0, 0))
         # driver's outside mirror on the screen post, just above the base
-        pb = pos(0, 0.1)
-        arm = [pb + V(0.004, 0, 0), pb + V(0.045, 0.02, -0.01), pb + V(0.07, 0.07, -0.02)]
+        pb = pos(n, 0.1)
+        arm = [pb + V(-0.004, 0, 0), pb + V(-0.045, 0.02, -0.01), pb + V(-0.07, 0.07, -0.02)]
         sweep(part_chrome, arm, [(0.0065 * math.cos(a), 0.0065 * math.sin(a)) for a in [2 * math.pi * k / 8 for k in range(8)]], mat='chrome', up=(0, 0, 1))
-        lathe(part_chrome, [(0.0, -0.03), (0.048, -0.02), (0.053, 0.0), (0.05, 0.006), (0.0, 0.008)], 24, arm[-1] + V(0.012, 0.035, 0.0), V(0.15, 0.08, -1).normalized(), mat='chrome')
+        lathe(part_chrome, [(0.0, -0.03), (0.048, -0.02), (0.053, 0.0), (0.05, 0.006), (0.0, 0.008)], 24, arm[-1] + V(-0.012, 0.035, 0.0), V(-0.15, 0.08, -1).normalized(), mat='chrome')
         # rear-view mirror: a slim chrome housing on a short stem just under the header, aimed
         # so the driver sees straight back; the runtime puts the reflecting face on the
         # 'rear_mirror' anchor (its local Z out of the glass)
@@ -1257,7 +1258,7 @@ def build(lod, coll):
         wheels.append(build_wheel(lod, s, 'wheel_' + nm + tag, root, V(s * TRACK, HUB_H, u)))
     sw = build_steering(lod, root)
     if lod == 0:
-        empty('driver_seat', V(0.42, 0.60, -0.1 + DF), root)
+        empty('driver_seat', V(DRIVER_S, 0.60, -0.1 + DF), root)
         empty('driver_eye', V(*EYE), root)
         build_needle(root)
         # hook for a skinned driver (added at runtime): hips on the cushion under the eye

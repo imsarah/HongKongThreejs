@@ -25,6 +25,7 @@ import { createChaseCamera } from './camera.js';
 import { createHud } from '../ui/hud.js';
 import { createSpray, createWake, P_WATER, P_SAND, P_SPARK, P_GRASS, P_SMOKE, P_MIST } from './spray.js';
 import { createDamage, DENT_SPEED } from './damage.js';
+import { doorPoints } from '../player/fasttravel.js';
 
 export const PARKED = {
   bike: { x: -11.4, z: -26.5, yaw: 0.05 },   // (on the east sidewalk, by the shops)
@@ -307,10 +308,9 @@ export function createVehicles(scene, {
     return e;
   }
 
-  // a car's door points (sim local: -x is the driver's side), world coordinates
+  // Shared right-hand-drive door points, also used when travelling to a car.
   function doors(pose, body, width) {
-    const s = Math.sin(pose.yaw), c = Math.cos(pose.yaw), lz = doorZ(body), out = width / 2 + 0.45;
-    return [[-out, 'driver'], [out, 'passenger']].map(([lx, side]) => ({ x: pose.x + lx * c + lz * s, z: pose.z - lx * s + lz * c, side }));
+    return doorPoints(pose, doorZ(body), width);
   }
 
   function mount(e, door = 'driver') {

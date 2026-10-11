@@ -52,7 +52,7 @@ const kit = {
   makeDrivable(kind) {
     made++;
     const root = new THREE.Group(), eye = new THREE.Object3D();
-    eye.position.set(0.42, 1.05, 0.3);
+    eye.position.set(-0.42, 1.05, 0.3);
     root.add(eye);
     const rig = { chase: false, pelvis: new THREE.Object3D() };
     return {
@@ -84,14 +84,14 @@ const V = createVehicles(new THREE.Scene(), {
 });
 const look = (x, z) => { walker.yaw = -Math.atan2(x - walker.pos.x, -(z - walker.pos.y)); camera.position.set(walker.pos.x, 1.85, walker.pos.y); camera.rotation.set(0, walker.yaw, 0, 'YXZ'); camera.updateMatrixWorld(); };
 
-// 1. at the sedan's driver door (the road side of a car parked at the west curb, facing south)
+// 1. at the sedan's right-hand driver door (the sidewalk side at the west curb, facing south)
 const sedan = cars[0];
 const [dDoor, pDoor] = V.doorsOf(sedan);
-check('the driver door is on the car\'s left (road side), the passenger door on the sidewalk side', dDoor.side === 'driver' && dDoor.x > sedan.x && pDoor.x < sedan.x, { driver: [+dDoor.x.toFixed(2), +dDoor.z.toFixed(2)], passenger: [+pDoor.x.toFixed(2), +pDoor.z.toFixed(2)] });
+check('the driver door is on the car\'s right (sidewalk side), the passenger door on the road side', dDoor.side === 'driver' && dDoor.x < sedan.x && pDoor.x > sedan.x, { driver: [+dDoor.x.toFixed(2), +dDoor.z.toFixed(2)], passenger: [+pDoor.x.toFixed(2), +pDoor.z.toFixed(2)] });
 walker.pos.set(dDoor.x + 0.3, dDoor.z); look(sedan.x, sedan.z);
 V.update(1 / 60);
 check('near: "E enter" at the driver door', V.near === 'car' && V.nearDoor === 'driver', { near: V.near, door: V.nearDoor });
-walker.pos.set(dDoor.x + 3, dDoor.z); look(sedan.x, sedan.z);
+walker.pos.set(dDoor.x - 3, dDoor.z); look(sedan.x, sedan.z);
 V.update(1 / 60);
 check('no prompt 3 m from the door', V.near === null, { near: V.near });
 walker.pos.set(dDoor.x + 0.3, dDoor.z); look(sedan.x, sedan.z);
@@ -106,6 +106,8 @@ for (let i = 0; i < 90; i++) { V.update(1 / 60); if (caught === null && e.v.engi
 check('the modern starter catches in ~0.45 s', caught > 0.35 && caught < 0.6, { caught });
 const cam = camera.position.clone();
 check('first-person camera at the driver\'s eye', Math.abs(cam.y - 1.05) < 0.25 && Math.hypot(cam.x - e.v.x, cam.z - e.v.z) < 1.2, { y: +cam.y.toFixed(2) });
+const rightOffset = (cam.x - e.v.x) * Math.cos(e.v.yaw) - (cam.z - e.v.z) * Math.sin(e.v.yaw);
+check('first-person camera sits on the car\'s right', rightOffset > 0.3, { rightOffset });
 check('audio gets the i4 engine profile and a door event', audioStates.some((s) => s.kind === 'car' && s.engine === 'i4') && audioStates.some((s) => s.event === 'door'), { engine: audioStates.at(-1).engine });
 
 // 2. pull out and drive south down the lane
