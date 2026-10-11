@@ -53,7 +53,7 @@ function detect() {
 // maxPixels caps the rendered pixel count (not just the DPR): a 4K / high-DPI screen at the
 // 'high' DPR cap was ~8 MP per frame with MSAA half-float targets, enough to push a single
 // GPU frame past the Windows driver timeout; 'high' allows up to 2560x1440 native.
-// shadowFilter 'lite' = 20 blocker + 25 PCF samples per pixel; 'full' = 54 + 64 (?ultra only).
+// Shadows: mobile = 5 blocker + 9 PCF samples; lite = 20 + 25; full = 54 + 64 (?ultra).
 const TIERS = {
   high: {
     maxDpr: 1.5, maxPixels: 3.7e6, renderScale: 1, msaa: 4, fxaa: false, bloom: true,
@@ -69,7 +69,7 @@ const TIERS = {
   },
   low: {
     maxDpr: 1, maxPixels: 0.8e6, renderScale: 0.85, msaa: 0, fxaa: true, bloom: false,
-    shadowMap: [2048, 2048], shadowTaps: 4, shadowFilter: 'lite', cloudOctaves: 3,
+    shadowMap: [1024, 1024], shadowTaps: 3, shadowFilter: 'mobile', cloudOctaves: 3,
     oceanGrid: { rings: 220, segs: 176 }, sandRows: 260, sandDetail: 512, printFade: [16, 28],
     wrack: 3000, farFoliage: 0.5, signAtlas: 0.5, hotelFar: 560, shadowStep: 2.5, audioVoices: 'reduced',
   },

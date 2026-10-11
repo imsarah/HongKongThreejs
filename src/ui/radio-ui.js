@@ -25,7 +25,14 @@ const CSS = `
 #radio-card .dots { display: flex; justify-content: center; gap: 10px; margin-top: 9px; }
 #radio-card .dots b { width: 5px; height: 5px; transform: rotate(45deg); border: 1px solid var(--gold); }
 #radio-card .dots b.on { background: #f6d69a; border-color: #fff6d8; box-shadow: 0 0 6px rgba(246, 214, 154, 0.8); }
-html.touch #radio-card { scale: 0.85; transform-origin: 50% 0; }
+html.touch #radio-card { top: calc(env(safe-area-inset-top, 0px) + 126px); width: max-content;
+  max-width: calc(100vw - env(safe-area-inset-left, 0px) - env(safe-area-inset-right, 0px) - 32px);
+  box-sizing: border-box; padding: 8px 14px; }
+html.touch #radio-card .name { font-size: 20px; gap: 8px; white-space: normal; line-height: 1.15; }
+html.touch #radio-card .name i { width: 12px; }
+@media (max-height: 500px) {
+  html.touch #radio-card { top: calc(env(safe-area-inset-top, 0px) + 12px); max-width: calc(100vw - 280px); }
+}
 `;
 
 export function createRadioUi({ shot = false } = {}) {

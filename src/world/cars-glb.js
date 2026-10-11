@@ -239,7 +239,7 @@ function glassMaterial(env, { color, opacity, edge, key, edgeTint = null, under 
     color, roughness: rough, metalness: 0, transparent: true, opacity, envMap: env, envMapIntensity: envI, ior, specularIntensity: spec,
     clearcoat: 1, clearcoatRoughness: Math.max(0.015, rough), depthWrite: false, side: THREE.DoubleSide,
   });
-  // inside: { edge, dash } for the hero's screen seen from the driver's seat (uInside = 1):
+  // inside: { opacity, edge, dash, lower, upper } for glass seen from the driver's seat:
   // a stronger edge tint, and the sunlit dash top faintly mirrored in the lower glass. From
   // outside the grazing edge stays light so the cockpit reads through the wraparound corners
   const uInside = { value: 0 };
@@ -273,13 +273,14 @@ function glassMaterial(env, { color, opacity, edge, key, edgeTint = null, under 
       s.fragmentShader = s.fragmentShader.replace('#include <common>', '#include <common>\nvarying float vObjY;\nuniform float uInside;');
     }
     const d = inside ? new THREE.Color(inside.dash) : null;
+    const lower = (inside?.lower ?? 0.93).toFixed(2), upper = (inside?.upper ?? 1.16).toFixed(2);
     s.fragmentShader = s.fragmentShader.replace('#include <opaque_fragment>',
       `{ float fr = pow(1.0 - clamp(abs(dot(normalize(vNormal), normalize(vViewPosition))), 0.0, 1.0), 3.0);
+         ${inside ? `diffuseColor.a = mix(diffuseColor.a, ${inside.opacity.toFixed(2)}, uInside);` : ''}
          diffuseColor.a = mix(diffuseColor.a, 1.0, fr * ${edgeExpr});
          ${tint ? `outgoingLight = mix(outgoingLight, outgoingLight * vec3(${tint.r.toFixed(3)}, ${tint.g.toFixed(3)}, ${tint.b.toFixed(3)}), fr);` : ''}
          outgoingLight = totalDiffuse * diffuseColor.a + max(outgoingLight - totalDiffuse, vec3(0.0)) * (0.35 + 0.65 * diffuseColor.a);
-         ${d ? `outgoingLight += uInside * vec3(${d.r.toFixed(3)}, ${d.g.toFixed(3)}, ${d.b.toFixed(3)}) * (1.0 - smoothstep(0.93, 1.16, vObjY));
-         diffuseColor.a = max(diffuseColor.a, uInside * 0.1 * (1.0 - smoothstep(0.93, 1.16, vObjY)));` : ''} }
+         ${d ? `outgoingLight += uInside * vec3(${d.r.toFixed(3)}, ${d.g.toFixed(3)}, ${d.b.toFixed(3)}) * 0.45 * (1.0 - smoothstep(${lower}, ${upper}, vObjY));` : ''} }
        outgoingLight = min(outgoingLight, vec3(${CAR_MAX_RADIANCE.toFixed(2)}));
 #include <opaque_fragment>`);
   };
@@ -425,7 +426,7 @@ function makeMaterials(env, sky, vinylNor, carpetNor) {
     // and (from the seat) the painted dash top, going to a green mirror at grazing angles
     screen: glassMaterial(env, {
       color: 0xa9d2bd, opacity: 0.2, edge: 0.32, key: 'screen', edgeTint: 0x5fae8c, under: 0x5d9689, ior: 1.7, envI: 1.1,
-      inside: { edge: 0.8, dash: 0x2e4a44 },
+      inside: { opacity: 0.28, edge: 0.85, dash: 0x52756a },
     }),
     // the dial lenses: a faint glint, the printed faces must read through them
     dial_glass: glassMaterial(env, { color: 0xf2f6f4, opacity: 0.025, edge: 0.15, key: 'dial', envI: 0.1, rough: 0.14 }),
@@ -551,10 +552,19 @@ function splitGlass(o) {
 // The driven modern car's glass: the fleet's dark tint reads nearly black from the seat, so
 // its panes get lighter copies (shared by every driven car; two extra glass programs)
 let LITE = null;
-const liteGlass = (M, env) => (LITE ??= new Map([
-  [M.tint, glassMaterial(env, { color: 0x1a2226, opacity: 0.3, edge: 0.75, key: 'tint-lite', spec: 1.6, envI: 0.8 })],
-  [M.windshield, glassMaterial(env, { color: 0x1c2428, opacity: 0.14, edge: 0.75, key: 'windshield-lite', spec: 1.2, envI: 0.7 })],
-]));
+const liteGlass = (M, env) => {
+  if (LITE) return LITE;
+  const windshield = glassMaterial(env, {
+    color: 0xa8c8bc, opacity: 0.22, edge: 0.82, edgeTint: 0x86b4a4,
+    key: 'windshield-lite', spec: 1.4, envI: 1, rough: 0.025,
+    inside: { opacity: 0.22, edge: 0.82, dash: 0x59645e, lower: 1.05, upper: 1.32 },
+  });
+  windshield.userData.uInside.value = 1;
+  return (LITE = new Map([
+    [M.tint, glassMaterial(env, { color: 0x78958b, opacity: 0.3, edge: 0.82, edgeTint: 0x86b4a4, key: 'tint-lite', spec: 1.6, envI: 0.95 })],
+    [M.windshield, windshield],
+  ]));
+};
 // (only from the driver's seat: seen from outside, the light panes left the roof reading as
 // the one dark pane of an empty glass box; returns set(lite))
 function lighterGlass(root, M, env) {
@@ -567,7 +577,8 @@ function lighterGlass(root, M, env) {
   const panes = [];
   root.traverse((o) => { if (o.isMesh && swap.has(o.material)) panes.push([o, o.material, swap.get(o.material)]); });
   let lite = false;
-  return (on) => {
+  return (on, baseY = 0) => {
+    if (on) LITE.get(M.windshield).userData.uBaseY.value = baseY;
     if (on === lite) return;
     lite = on;
     for (const [o, dark, light] of panes) o.material = on ? light : dark;
@@ -1315,7 +1326,7 @@ function trafficKit(scene, gltf, M, env, pool, probe) {
         apply(v) {
           const g = I.root;
           g.visible = true;
-          setLite(!!v.ridden && !rig.chase);
+          setLite(!!v.ridden && !rig.chase, v.bodyY);
           g.position.set(v.x, v.bodyY, v.z);
           g.rotation.set(-v.pitch, v.yaw + Math.PI, -v.roll, 'YXZ');
           // (pressed into the sand and the surf: the contact blob and sun patch stay on top)
@@ -1369,13 +1380,17 @@ function trafficKit(scene, gltf, M, env, pool, probe) {
         },
         eye: (out) => (eye ? eye.getWorldPosition(out) : I.root.getWorldPosition(out).setY(I.root.position.y + 1.2)),
         eyeQuat: (out) => I.root.getWorldQuaternion(out).multiply(FLIP_Y),
-        attachDriver(body, { update = null } = {}) {
+        attachDriver(body, { update = null, forward = 0 } = {}) {
           if (!rig.pelvis) return () => {};
+          if (forward && eye) eye.position.z += forward;
           rig.pelvis.add(body);
           rig.body = body;
           rig.update = update;
           body.visible = false;
-          return () => { rig.pelvis.remove(body); rig.body = rig.update = null; };
+          return () => {
+            if (forward && eye) eye.position.z -= forward;
+            rig.pelvis.remove(body); rig.body = rig.update = null;
+          };
         },
         dispose() {
           scene.remove(I.root);

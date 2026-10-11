@@ -53,10 +53,22 @@ Check the shipped car models and driving interactions with:
 node tools/right-hand-drive-test.mjs
 node tools/car-ride-test.mjs
 node tools/any-car-test.mjs
+node tools/car-cockpit-test.mjs
+node tools/car-glass-mobile-test.mjs
 ```
 
 These check the right-hand cockpit anchors in all eight car models, door sides at different
 headings, driver-camera placement, and the convertible and parked-car driving flows.
+The browser checks need the dev server running and Playwright Chromium installed; set
+`BROWSER_CHANNEL=chrome` to use an installed Chrome. They check both hands against the rim
+through full-lock turns in all eight cars, compare the inside view with and without windshield
+glass, and exercise iPhone SE, iPhone 13, Pixel 7 and iPad layouts in both orientations.
+Screenshots are saved under `shots/cockpit/` and `shots/glass-mobile/`.
+
+Phone and tablet views keep enough horizontal field of view in portrait, with a driving HUD,
+readable touch buttons of at least 44 px, and a radio card that fits around the minimap.
+Rotating the screen releases held steering and braking inputs. The low quality tier uses
+1024 px sun-shadow maps and 14 shadow samples per pixel to reduce mobile rendering cost.
 
 ## Controls
 
@@ -223,7 +235,10 @@ Mixamo crowd and open-world driving ([CHANGELOG.md](CHANGELOG.md) has its full h
   rebuilt for right-hand drive: cockpit controls, seated characters, pedal animation, camera
   anchors and driver-door interactions move together. The modern cars' windscreen borders
   use narrow strips along the glass edges (12 mm for black trim, 6 mm for chrome), and the
-  front pillars leave more of the curved windscreen transparent. Both detail levels are
+  front pillars leave more of the curved windscreen transparent. From the driver's seat,
+  glass has visible tint, edge reflections and a faint reflection of the dashboard. Both
+  hands grip the rim with curled fingers, sliding around it as the wheel turns; the modern
+  seated pose and camera move forward together so the arms reach. Both detail levels are
   rebuilt; the driving simulation is retained. See [hero.py](blender/hero.py),
   [modern.py](blender/modern.py), [traffic.js](src/world/traffic.js),
   [cars-glb.js](src/world/cars-glb.js) and [hk-plates.js](src/world/hk-plates.js).

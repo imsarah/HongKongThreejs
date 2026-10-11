@@ -386,7 +386,14 @@ function installSmoothShadows(shadowCam, mapSize) {
   const ext = [shadowCam.right - shadowCam.left, shadowCam.top - shadowCam.bottom];
   const range = shadowCam.far - shadowCam.near;
   const taps = QUALITY.shadowTaps, tapC = (taps - 1) / 2;   // taps x taps bilinear grid  // receiver-to-blocker distance (m): integral of blocker occupancy over depth offset.
-  // full: 3x3 ring x 6 depths (54 samples); lite: centre + 4 diagonals x 4 depths (20)
+  // Mobile estimates a fixed penumbra from five taps; larger tiers search blocker depths.
+  const mobileSearch = /* glsl */ `
+                for ( int k = 0; k < 5; k ++ ) {
+                    vec2 uv = shadowCoord.xy + ( k == 4 ? vec2( 0.0 ) : vec2( k < 2 ? -0.7 : 0.7, ( k & 1 ) == 0 ? -0.7 : 0.7 ) ) * sr;
+                    float blocked = 1.0 - texture( shadowMap, vec3( uv, zr ) );
+                    bSum += blocked;
+                    dSum += blocked * 2.0;
+                }`;
   const blockerSearch = QUALITY.shadowFilter === 'full' ? /* glsl */ `
 				for ( int i = -1; i <= 1; i ++ ) {
 					for ( int j = -1; j <= 1; j ++ ) {
@@ -420,7 +427,7 @@ function installSmoothShadows(shadowCam, mapSize) {
 				// blocker search ring no wider than thin casters, so none are skipped
 				vec2 sr = max( minM, 0.08 ) / odTexM * texelSize;
 				float bSum = 0.0, dSum = 0.0;
-				${blockerSearch}
+                ${QUALITY.shadowFilter === 'mobile' ? mobileSearch : blockerSearch}
 				if ( bSum < 0.001 ) {
 					shadow = 1.0;
 				} else {

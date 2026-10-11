@@ -732,10 +732,10 @@ export function buildCrowd(scene, assets, { beach, hotels, walker = null, getCar
   // Hands on the rim. The rim is the grips' parent (the steering-wheel pivot: local +y down the
   // column, rim angle c clockwise from twelve as the driver sees it, point (-r sin c, y, -r cos c)).
   // Each hand holds a rim point; the wheel's turn `rig.wheelAngle` carries it round, and once it
-  // has been carried too far from the hand's home (nine / three) the hand lets go and takes a
-  // new hold ahead of the turn (hand over hand, one at a time), drifting home when the wheel
+  // has been carried too far from the hand's home (nine / three) the hand slides to a
+  // new hold ahead of the turn, one at a time, drifting home when the wheel
   // rests. Without a wheel angle (the traffic) the hands stay on the grips.
-  const HOLD_LIM = 1.25, REGRIP_T = 0.24;
+  const HOLD_LIM = 0.7, REGRIP_T = 0.18;
   function rimFrame(rig) {
     const wh = rig.gripL?.parent;
     if (!wh) return null;
@@ -768,7 +768,6 @@ export function buildCrowd(scene, assets, { beach, hotels, walker = null, getCar
         const c = h.mv ? THREE.MathUtils.lerp(h.mv.c0, h.mv.h1 + w - dw, THREE.MathUtils.smoothstep(h.mv.t, 0, 1)) : h.h + w - dw;
         h.mv = null;
         h.h = c - w;
-        h.slide = 0.25;
       } else if (h.mv) {
         h.mv.t += dt / REGRIP_T;
         if (h.mv.t >= 1) { h.h = h.mv.h1; h.mv = null; }
@@ -782,35 +781,31 @@ export function buildCrowd(scene, assets, { beach, hotels, walker = null, getCar
         if (st.still > 0.35) {
           // the wheel at rest: back to nine / three, one hand at a time
           if (Math.abs(d) > 0.2 && !busy) h.mv = { t: 0, c0: h.h + w, h1: home - w };
-        } else if (Math.abs(d) > lim && (!busy || Math.abs(d) > lim + 0.6)) {
+        } else if (Math.abs(d) > lim && (!busy || Math.abs(d) > lim + 0.2)) {
           // a new hold ahead of the turn (the wheel carries it back through home)
           const ahead = dw && Math.sign(dw) === Math.sign(d) ? -Math.sign(d) * 0.6 : 0;
           h.mv = { t: 0, c0: h.h + w, h1: home + ahead - w };
         }
       }
-      let c = h.h + w, lift = 0, k = 1;
-      if (h.slide > 0) { h.slide -= dt; k = 0.7; }
+      let c = h.h + w;
       if (h.mv) {
         const e = THREE.MathUtils.smoothstep(h.mv.t, 0, 1);
         c = THREE.MathUtils.lerp(h.mv.c0, h.mv.h1 + w, e);
-        lift = Math.sin(Math.PI * Math.min(1, h.mv.t));
-        k = 1 - 0.8 * lift;
       }
       // rim point, outward radial, column axis (away from the driver), world
       rimPoint(r, y, c, _tg);
       _u.set(-Math.sin(c), 0, -Math.cos(c)).applyQuaternion(_wq);
       _ax.set(0, 1, 0).applyQuaternion(_wq);
-      _tg.addScaledVector(_ax, -0.06 * lift).addScaledVector(_u, 0.03 * lift);
       // knuckles along the rim: the hand points forward and a little outward over it, the palm
       // faces in against it (thumb up at nine and three)
       const g = G?.[side];
       _F.copy(_ax).multiplyScalar(0.8).addScaledVector(_u, 0.35).normalize();
       _N.copy(_u).multiplyScalar(-0.8).addScaledVector(_ax, 0.35).normalize();
       const reach = g ? g.reach : 0.09;
-      h.W = (h.W ?? new THREE.Vector3()).copy(_tg).addScaledVector(_N, -0.036).addScaledVector(_F, -reach * 0.8);
+      h.W = (h.W ?? new THREE.Vector3()).copy(_tg).addScaledVector(_N, -0.014).addScaledVector(_F, -reach * 0.95);
       h.F = (h.F ?? new THREE.Vector3()).copy(_F);
       h.N = (h.N ?? new THREE.Vector3()).copy(_N);
-      h.k = k;
+      h.k = 1;
     }
     // reach: lean the chest over the wheel and bring the shoulders forward as far as the
     // arms fall short of the holds
@@ -822,7 +817,7 @@ export function buildCrowd(scene, assets, { beach, hotels, walker = null, getCar
       const L = B[side + 'ForeArm'].position.length() * B[side + 'Arm'].getWorldScale(_p).x + B[side + 'Hand'].position.length() * B[side + 'ForeArm'].getWorldScale(_p).x;
       need = Math.max(need, S.distanceTo(h.W) - 0.96 * L);
     }
-    const lean = THREE.MathUtils.clamp(need / 0.5, 0, 0.14);
+    const lean = THREE.MathUtils.clamp(need / 0.3, 0, 0.6);
     if (lean > 0) {
       _ax.set(1, 0, 0).applyQuaternion(aq);
       for (const [n, f] of [['Spine1', 0.45], ['Spine2', 0.55]]) {
@@ -974,13 +969,22 @@ export function buildCrowd(scene, assets, { beach, hotels, walker = null, getCar
       P.setLevel(0);
       P.root.name = 'player-driver-modern';
       modernDriver = { P, G: measureGrip(P) };
+      // Match the convertible's reach allowance; the palms wrap the rim, not the wrist.
+      for (const side of ['Left', 'Right']) {
+        P.bones[side + 'ForeArm'].position.multiplyScalar(1.1);
+        P.bones[side + 'Hand'].position.multiplyScalar(1.1);
+      }
     }
     modernDetach?.();
     const { P, G } = modernDriver, hold = {};
+    P.hold = hold; P.grip = G;
     let seated = false, t0 = null;
+    // Sit toward the front of the cushion and move the eye with the body. The old pose
+    // left the modern wheel beyond arm's reach, especially in the taller cabins.
     modernDetach = view.attachDriver(P.root, {
+      forward: 0.35,
       update(rig, v) {
-        if (!seated) { seated = true; seatBody(P, rig.pelvis); }
+        if (!seated) { seated = true; seatBody(P, rig.pelvis, 0.35); }
         const dt = t0 === null ? 1 / 60 : THREE.MathUtils.clamp(rig.t - t0, 0, 0.1);
         t0 = rig.t;
         P.mixer.update(dt);
@@ -1004,6 +1008,7 @@ export function buildCrowd(scene, assets, { beach, hotels, walker = null, getCar
     people: Object.fromEntries(agents.map((a) => [a.name, a])),
     setVehicles(v) { vehicles = v; },
     get playerDriver() { return playerDriver; },
+    get drivingPlayer() { return modernDetach ? modernDriver.P : playerDriver; },
     attachDrivers,
     seatPlayer,
     // pedestrians for the traffic sim (right of way on the crosswalks)

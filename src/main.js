@@ -16,6 +16,7 @@ import { buildPeople } from './world/people.js'; // PEOPLE fallback: the procedu
 import { preloadPeople } from './world/mixamo.js'; // PEOPLE: Mixamo characters, clip library, skates
 import { buildCrowd } from './world/crowd.js'; // PEOPLE: walkers, joggers, skaters, sitters, drivers
 import { QUALITY, IS_TOUCH } from './quality.js';
+import { viewportFov } from './renderer/viewport.js';
 import { createTouchControls } from './player/touch.js';
 import { createVehicles } from './vehicles/index.js';
 import { buildTraffic } from './world/traffic.js'; // TRAFFIC: cars cruising the drive, crosswalks, the 11 ST signal
@@ -87,7 +88,8 @@ renderer.domElement.addEventListener('webglcontextlost', (e) => {
 }, false);
 
 const scene = new THREE.Scene();
-const camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.1, 30000);
+const aspect = window.innerWidth / window.innerHeight;
+const camera = new THREE.PerspectiveCamera(viewportFov(50, aspect), aspect, 0.1, 30000);
 
 // LOADER hook: report a build phase to the loading screen (index.html) and, outside ?shot mode,
 // yield one painted frame so it can repaint between the synchronous build steps.
@@ -368,6 +370,7 @@ if (!SHOT) {
 
 function onResize() {
   camera.aspect = window.innerWidth / window.innerHeight;
+  if (!vehicles.riding) camera.fov = viewportFov(50, camera.aspect);
   camera.updateProjectionMatrix();
   renderer.setPixelRatio(pixelRatio());   // devicePixelRatio can change (zoom, other screen)
   renderer.setSize(window.innerWidth, window.innerHeight);
@@ -378,7 +381,8 @@ window.addEventListener('resize', onResize);
 // mobile: the new size can settle a little after the rotation event
 window.addEventListener('orientationchange', () => { onResize(); setTimeout(onResize, 350); });
 window.visualViewport?.addEventListener('resize', () => {
-  if (renderer.domElement.width !== Math.floor(window.innerWidth * renderer.getPixelRatio())) onResize();
+  if (renderer.domElement.width !== Math.floor(window.innerWidth * renderer.getPixelRatio()) ||
+      renderer.domElement.height !== Math.floor(window.innerHeight * renderer.getPixelRatio())) onResize();
 });
 
 // Dynamic resolution: if frames average over ~22 ms (under ~45 fps) for 2 s, step the

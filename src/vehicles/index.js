@@ -15,7 +15,8 @@
 // are switched off); at most MAX_LIVE of them stay live, the oldest out of sight is put back.
 import * as THREE from 'three';
 import { EYE_HEIGHT, TOWER, CROSS, crossStreetAt } from '../world/layout.js';
-import { QUALITY } from '../quality.js';
+import { QUALITY, IS_TOUCH } from '../quality.js';
+import { viewportFov } from '../renderer/viewport.js';
 import { createVehicle, stepVehicle, blockedAt, buildGrid, settle, dismountSpots, canRestart, surfaceAt } from './sim.js';
 import { OPEN_WORLD, OPEN_SPECS } from './specs.js';
 import { edgeSteer, extentBounds, insideWorld } from '../world/extent.js';
@@ -637,7 +638,7 @@ export function createVehicles(scene, {
       near = findNear();
       showPrompt(near ? (near.kind === 'car' ? '<b>E</b>enter' : '<b>E</b>ride') : '');
       setTouch(near ? (near.kind === 'car' ? 'enter' : 'ride') : null);
-      fov += (BASE_FOV - fov) * (1 - Math.exp(-dt * 6));
+      fov += (viewportFov(BASE_FOV, camera.aspect) - fov) * (1 - Math.exp(-dt * 6));
       applyFov();
       spray.update(dt);
       wake?.update(null, dt, clock);
@@ -745,7 +746,7 @@ export function createVehicles(scene, {
     }
     walker.pos.set(v.x, v.z);
     walker.feetY = v.groundY;
-    fov += (fov0 - fov) * (1 - Math.exp(-dt * 3));
+    fov += (viewportFov(fov0, camera.aspect, 45) - fov) * (1 - Math.exp(-dt * 3));
     applyFov();
     spray.update(dt);
     wake?.update(wakeList, dt, clock);
@@ -768,7 +769,7 @@ export function createVehicles(scene, {
       scrape, curb: v.curb ?? 0, skid: v.skid ?? 0, horn: !!input.horn, event: pendingEvent ?? undefined,
     });
     pendingEvent = null;
-    hud?.update(v, chaseOn || e.origin !== 'hero');
+    hud?.update(v, IS_TOUCH || chaseOn || e.origin !== 'hero');
 
     hintT -= dt;
     if (offFail > 0) { offFail -= dt; showPrompt('No room to get out here'); }

@@ -24,24 +24,25 @@ html.touch canvas { touch-action: none; }
 #touch .hint { left: calc(env(safe-area-inset-left, 0px) + 13vw); bottom: calc(env(safe-area-inset-bottom, 0px) + 11vh);
   width: 88px; height: 88px; margin: 0 0 -44px -44px; border-style: dashed; border-color: rgba(255, 250, 242, 0.22); transition: opacity 1.2s ease; }
 #touch .hint.gone { opacity: 0; }
-#touch button { position: absolute; pointer-events: auto; padding: 0; margin: 0; background: rgba(255, 250, 242, 0.04); color: rgba(255, 250, 242, 0.62);
+#touch button { position: absolute; pointer-events: none; padding: 0; margin: 0; background: rgba(20, 28, 26, 0.32); color: rgba(255, 250, 242, 0.92);
   border-radius: 50%; border: 1px solid rgba(255, 250, 242, 0.32); display: grid; place-items: center; outline: none;
   -webkit-tap-highlight-color: transparent; touch-action: none; transition: background 0.15s ease, transform 0.15s ease; }
 #touch button.down { background: rgba(255, 250, 242, 0.16); transform: scale(0.94); }
+#touch.on button { pointer-events: auto; }
 #touch button svg { display: block; fill: none; stroke: currentColor; stroke-width: 1.2; stroke-linecap: round; stroke-linejoin: round; }
 #touch .jump { width: 64px; height: 64px; right: calc(env(safe-area-inset-right, 0px) + 26px); bottom: calc(env(safe-area-inset-bottom, 0px) + 30px); }
 #touch .jump span { position: absolute; top: 100%; margin-top: 7px; left: 50%; transform: translateX(-50%); font: 400 8.5px/1 system-ui, -apple-system, sans-serif;
   letter-spacing: 0.3em; padding-left: 0.3em; text-transform: uppercase; color: rgba(255, 250, 242, 0.42); text-shadow: 0 1px 6px rgba(30, 18, 12, 0.35); }
 #touch .ride { width: 56px; height: 56px; right: calc(env(safe-area-inset-right, 0px) + 30px); bottom: calc(env(safe-area-inset-bottom, 0px) + 196px);
   opacity: 0; visibility: hidden; transition: opacity 0.3s ease, visibility 0s linear 0.3s, background 0.15s ease, transform 0.15s ease;
-  font: 500 9px/1 system-ui, -apple-system, sans-serif; letter-spacing: 0.22em; padding-left: 0.22em; text-transform: uppercase; }
+  font: 500 11px/1 system-ui, -apple-system, sans-serif; letter-spacing: 0.12em; padding-left: 0.12em; text-transform: uppercase; }
 #touch .ride.show { opacity: 1; visibility: visible; transition: opacity 0.3s ease, visibility 0s, background 0.15s ease, transform 0.15s ease; }
 #touch .cam { width: 44px; height: 44px; right: calc(env(safe-area-inset-right, 0px) + 100px); bottom: calc(env(safe-area-inset-bottom, 0px) + 202px);
   opacity: 0; visibility: hidden; transition: opacity 0.3s ease, visibility 0s linear 0.3s, background 0.15s ease, transform 0.15s ease; }
 #touch .cam.show, #touch .radio.show { opacity: 1; visibility: visible; transition: opacity 0.3s ease, visibility 0s, background 0.15s ease, transform 0.15s ease; }
 #touch .radio { width: 44px; height: 44px; right: calc(env(safe-area-inset-right, 0px) + 158px); bottom: calc(env(safe-area-inset-bottom, 0px) + 202px);
   opacity: 0; visibility: hidden; transition: opacity 0.3s ease, visibility 0s linear 0.3s, background 0.15s ease, transform 0.15s ease; }
-#touch .mute { width: 36px; height: 36px; right: calc(env(safe-area-inset-right, 0px) + 40px); bottom: calc(env(safe-area-inset-bottom, 0px) + 128px); }
+#touch .mute { width: 44px; height: 44px; right: calc(env(safe-area-inset-right, 0px) + 36px); bottom: calc(env(safe-area-inset-bottom, 0px) + 128px); }
 #touch .mute .x { display: none; }
 #touch .mute.muted .x { display: inline; }
 #touch .mute.muted .w { display: none; }
@@ -97,7 +98,10 @@ export function createTouchControls(walker, { audio, onRide, onCamera, onRadio }
     move = null; stick.x = stick.y = 0;
     stickEl.classList.remove('show'); knobEl.classList.remove('show');
   }
-  function releaseAll() { releaseMove(); look = null; }
+  function releaseAll() {
+    releaseMove(); look = null; walker.brakeHeld = false;
+    for (const button of [jumpBtn, muteBtn, rideBtn, camBtn, radioBtn]) button.classList.remove('down');
+  }
 
   function onStart(e) {
     if (!enabled) return;
@@ -193,7 +197,7 @@ export function createTouchControls(walker, { audio, onRide, onCamera, onRadio }
       rideBtn.textContent = mode === 'off' ? (car ? 'Exit' : 'Off') : car ? 'Enter' : 'Ride';
       rideBtn.setAttribute('aria-label', mode === 'off' ? (car ? 'Get out' : 'Get off') : car ? 'Get in' : 'Ride');
       const riding = mode === 'off';
-      camBtn.classList.toggle('show', riding && car);
+      camBtn.classList.toggle('show', !riding || car);
       radioBtn.classList.toggle('show', riding && car);
       if (!riding) walker.brakeHeld = false;
       jumpLabel.textContent = riding ? (kind === 'atv' ? 'Boost' : car ? 'Brake' : 'Hop') : 'Jump';
