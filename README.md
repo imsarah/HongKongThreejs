@@ -154,21 +154,88 @@ Mixamo crowd and open-world driving ([CHANGELOG.md](CHANGELOG.md) has its full h
 - the Mixamo crowd system, the synthesized audio engine, the minimap, the HUD and the radio.
 
 **Replaced or new for Causeway Bay:**
-- **City:**
-  - the beach, ocean, surf, park, promenade and palms are gone, and the east side is a second
-    row of buildings (`world/ground.js`);
-  - the hotels are replaced by the generated Hong Kong frontage (`world/hk-buildings.js`).
-- **Street:**
-  - the street furniture, markings and signs are rebuilt to Hong Kong conventions
-    (`world/street.js`);
-  - traffic keeps left, parked cars face the way the near lane runs, and there are red taxis
-    and Hong Kong plates (`world/hk-plates.js`);
-  - the lifeguard ATV is gone.
-- **Player:**
-  - the third-person body (`player/avatar.js`) and running are new.
-- **Light and text:**
-  - the sun moves from a sunrise over the Atlantic to a late-afternoon sun in the south-west;
-  - the titles, the loading screen and these docs are rewritten.
+
+- **City and walkable ground.** The beachfront setting is replaced by a dense street with
+  buildings and shops on both sides. The beach, ocean, surf, park, promenade, seawall,
+  lifeguard towers and palms are removed from the scene. A city ground module supplies the
+  pavement heights and ground queries used by the walker, pedestrians and cars, including
+  the road crown and crossing ramps. See [ground.js](src/world/ground.js) and
+  [layout.js](src/world/layout.js).
+- **Building types and geometry.** The pastel Art Deco hotels become four generated Hong
+  Kong building types: tong lau walk-ups, slim residential towers, older commercial blocks
+  with ribbon windows, and glass office towers. Each lot varies its height, floor spacing,
+  colour, wall finish and setbacks. Tong lau can have projecting balconies and railings;
+  residential towers have bay windows. Air-conditioning units, laundry poles, rooftop water
+  tanks, huts, parapets and billboards add detail to the frontage and skyline. See
+  [hk-buildings.js](src/world/hk-buildings.js).
+- **Windows and facade finish.** Windows are fitted to complete bays within each building
+  face, keeping openings clear of the corners. Recessed glass and parallax reveals give the
+  openings depth; interior mapping supplies rooms with floors, walls, furniture, curtains
+  and ceiling lights. Lower tong lau floors can have burglar grilles, and sills have drip
+  stains. Mosaic tiles, painted plaster and larger tiles vary the walls, with uneven grout,
+  chipped edges, repair patches, rain streaks and grime. Runoff is placed beneath actual
+  air-conditioning units. Small window patterns fade at distance to reduce shimmer. See
+  [hk-buildings.js](src/world/hk-buildings.js) and [facade-weather.js](src/textures/facade-weather.js).
+- **Shopfronts and interiors.** Ground floors have concrete canopies, storefront piers,
+  fluorescent tubes, lit bilingual fascia signs, glazing and occasional closed roller
+  shutters. The rooms behind the glass use eight styles matched to their signs: grocery,
+  cafe, pharmacy, fashion, salon, electronics, jewellery and hardware. Shelves and product
+  packaging, cafe menus and tables, clothing racks, salon mirrors and display counters
+  distinguish the interiors. Rooms and signs align with the storefront divisions; fashion
+  and jewellery shops use wood floors, other shops use terrazzo, and cafes keep checkerboards.
+  See [shop-interiors.js](src/textures/shop-interiors.js).
+- **Bilingual signs and banners.** Projecting vertical neon and lightbox signs, shop fascia
+  boards and rooftop advertisements replace the hotel signage. Chinese and English lettering
+  is drawn into a shared sign atlas, with invented business names. Commercial banners share
+  the ground-floor fascia below the upstairs windows, keeping the first residential floor
+  clear. See [hk-buildings.js](src/world/hk-buildings.js).
+- **Hong Kong street furniture and markings.** The road has double white centre lines,
+  double yellow no-stopping kerb lines, zebra crossings and 望右 LOOK RIGHT markings. Guard
+  railings, tall street lamps, orange bins, red hydrants and black traffic-light housings
+  replace the beachfront furniture. Street plates show Chinese above English: the main road
+  is Hennessy Road, with Percival Street, Lee Garden Road, Pak Sha Road, Kai Chiu Road, Yun
+  Ping Road and Sugar Street at the side streets. Stop, parking and pedestrian-crossing signs
+  follow the new setting. See [street.js](src/world/street.js).
+- **Traffic and vehicle presentation.** The inherited traffic simulation is adapted to
+  keep left: lane directions, stop lines, signal placement, cross-street stop signs and
+  parked-car headings change together. About a third of the moving cars are red taxis with
+  illuminated TAXI roof signs. Cars receive invented Hong Kong registration plates, white
+  at the front and yellow at the rear, and the speedometer defaults to km/h. The lifeguard
+  ATV is removed and the bike is placed on the east sidewalk. The car models and driving
+  simulation remain Ocean Drive's. See [traffic.js](src/world/traffic.js),
+  [cars-glb.js](src/world/cars-glb.js) and [hk-plates.js](src/world/hk-plates.js).
+- **Crowd and player characters.** Mixamo's Josh, Shannon, Suzie and Martha are added as the
+  main pedestrians and drivers, alongside some retained characters. Suzie is the player
+  on foot and at the wheel. The new models use the shared walking, running, phone, sitting
+  and driving animations, with near/far mesh variants and reduced texture sizes for lighter
+  quality tiers. Character conversion excludes the unskinned bone-display helpers that
+  previously appeared as large white triangles at distance. See [mixamo.js](src/world/mixamo.js)
+  and the [character sources](assets/mixamo/MANIFEST.md).
+- **Third-person walking and running.** A visible player body turns toward the direction of
+  movement and blends idle, walk and run animations according to speed. V or C switches
+  between first person and a camera over the right shoulder; the camera pulls closer when
+  walls obstruct it. Shift runs while held, Caps Lock keeps running enabled, and full joystick
+  tilt runs on touch devices. The body is hidden in first person and while riding. See
+  [avatar.js](src/player/avatar.js) and [walker.js](src/player/walker.js).
+- **Scanned city materials.** Local Poly Haven CC0 scans add asphalt roads, herringbone
+  paving, painted plaster, selected tiled facades, concrete canopies and ledges, and wood
+  and terrazzo shop finishes. Colour, normals, roughness and occlusion give the surfaces
+  variation beyond their generated geometry. Shared building atlases limit texture sampling;
+  high/medium quality uses 1K source maps and low uses 512 px maps. Assets load from this
+  project, with procedural fallbacks if a set is unavailable. See the
+  [texture credits and import notes](public/textures/city/README.md).
+- **Lighting and contact shading.** The Atlantic sunrise becomes a south-west afternoon
+  sun, at 238° azimuth and 24° elevation, with shadow coverage sized for the towers. The
+  Modern Evening Street HDRI adds urban ambient lighting and reflections while the visible
+  sky and haze retain the afternoon treatment. Warm area lights illuminate the paving under
+  nearby canopy tubes; six, four or two fixtures are active on high, medium or low quality.
+  Contact shading adds depth around pillars, ledges, people and vehicles on high/medium
+  quality, and can be released by the GPU guard. See the
+  [HDRI notes](public/environments/README.md), [canopy-lighting.js](src/world/canopy-lighting.js)
+  and [contact-ao.js](src/renderer/contact-ao.js).
+- **Project presentation.** The page title, loading screen, control hints and documentation
+  describe HongKongThreejs and Causeway Bay. The Hong Kong implementation is published on
+  `main`; Ocean Drive's original brief, history and licence attribution remain in the repo.
 
 The original Ocean Drive brief is kept in [PROMPT.md](PROMPT.md) for the record, with the Hong
 Kong brief after it.
