@@ -56,6 +56,9 @@ node tools/any-car-test.mjs
 node tools/props-test.mjs
 node tools/railing-test.mjs
 node tools/railing-scene-test.mjs
+node tools/render-resolution-test.mjs
+node tools/render-clarity-test.mjs
+node tools/gpu-clarity-test.mjs
 node tools/car-cockpit-test.mjs
 node tools/car-glass-mobile-test.mjs
 node tools/traffic-sim-test.mjs
@@ -84,11 +87,21 @@ simulated minutes on every quality tier and checks opposing walkers on a shared 
 Prop checks cover slow-speed blocking, crash impacts along the full length of a railing,
 fallen sections clearing their collision footprint, and restoration out of view. The live
 scene check also verifies the square metal crossing studs on desktop and mobile.
+Render clarity checks cover iPhone portrait/landscape and low/medium laptop views,
+including sustained slow-frame feedback, resize handling and high-DPI pixel budgets.
+Synthetic GPU timings also check that effects are reduced first while the emergency
+resolution fallback still works.
 
 Phone and tablet views keep enough horizontal field of view in portrait, with a driving HUD,
 readable touch buttons of at least 44 px, and a radio card that fits around the minimap.
 Rotating the screen releases held steering and braking inputs. The low quality tier uses
 1024 px sun-shadow maps and 14 shadow samples per pixel to reduce mobile rendering cost.
+Low and medium tiers render at up to 1.5 device pixel ratio within a 2.1-million-pixel
+budget, so a 1080p laptop can keep native resolution and phone displays retain more detail.
+Both keep full-size sign lettering; the low tier uses gentler FXAA smoothing. Normal
+adaptive quality reduces shadows and contact shading before resolution and preserves at
+least one render pixel per CSS pixel where the budget allows. The GPU timeout guard can
+still reduce resolution further on an overloaded device. Medium sun shadows start at 2048 px.
 
 ## Controls
 

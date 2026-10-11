@@ -62,16 +62,16 @@ const TIERS = {
     wrack: 9000, farFoliage: 1, signAtlas: 1, hotelFar: Infinity, shadowStep: 1, audioVoices: 'full',
   },
   medium: {
-    maxDpr: 1.25, maxPixels: 1.3e6, renderScale: 1, msaa: 2, fxaa: false, bloom: true,
-    shadowMap: [4096, 2048], shadowTaps: 5, shadowFilter: 'lite', cloudOctaves: 4,
+    maxDpr: 1.5, maxPixels: 2.1e6, renderScale: 1, msaa: 2, fxaa: false, bloom: true,
+    shadowMap: [2048, 1024], shadowTaps: 5, shadowFilter: 'lite', cloudOctaves: 4,
     oceanGrid: { rings: 300, segs: 256 }, sandRows: 360, sandDetail: 1024, printFade: [26, 45],
     wrack: 6000, farFoliage: 0.75, signAtlas: 1, hotelFar: Infinity, shadowStep: 1, audioVoices: 'full',
   },
   low: {
-    maxDpr: 1, maxPixels: 0.8e6, renderScale: 0.85, msaa: 0, fxaa: true, bloom: false,
+    maxDpr: 1.5, maxPixels: 2.1e6, renderScale: 1, msaa: 0, fxaa: true, bloom: false,
     shadowMap: [1024, 1024], shadowTaps: 3, shadowFilter: 'mobile', cloudOctaves: 3,
     oceanGrid: { rings: 220, segs: 176 }, sandRows: 260, sandDetail: 512, printFade: [16, 28],
-    wrack: 3000, farFoliage: 0.5, signAtlas: 0.5, hotelFar: 560, shadowStep: 2.5, audioVoices: 'reduced',
+    wrack: 3000, farFoliage: 0.5, signAtlas: 1, hotelFar: 560, shadowStep: 2.5, audioVoices: 'reduced',
   },
 };
 

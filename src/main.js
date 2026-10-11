@@ -17,6 +17,7 @@ import { preloadPeople } from './world/mixamo.js'; // PEOPLE: Mixamo characters,
 import { buildCrowd } from './world/crowd.js'; // PEOPLE: walkers, joggers, skaters, sitters, drivers
 import { QUALITY, IS_TOUCH } from './quality.js';
 import { viewportFov } from './renderer/viewport.js';
+import { basePixelRatio, clarityScaleFloor } from './renderer/resolution.js';
 import { createTouchControls } from './player/touch.js';
 import { createVehicles } from './vehicles/index.js';
 import { buildTraffic } from './world/traffic.js'; // TRAFFIC: cars cruising the drive, crosswalks, the 11 ST signal
@@ -40,8 +41,7 @@ const renderer = new THREE.WebGLRenderer({ antialias: false, powerPreference: 'h
 // render scale: the tier's base scale, stepped down / up by the dynamic resolution below.
 // The base pixel ratio respects both the tier's DPR cap and its pixel budget, so a 4K or
 // high-DPI screen renders about as many pixels as a 1080p one.
-const baseDpr = () => Math.max(0.5, Math.min(window.devicePixelRatio, QUALITY.maxDpr,
-  Math.sqrt(QUALITY.maxPixels / (window.innerWidth * window.innerHeight))));
+const baseDpr = () => basePixelRatio(window.innerWidth, window.innerHeight, window.devicePixelRatio, QUALITY);
 let renderScale = QUALITY.renderScale;
 // the first frames start at half resolution and ramp up, so the first (heaviest) GPU
 // submissions stay small
@@ -379,7 +379,8 @@ if (!SHOT) {
   if (params.has('hud')) hud.classList.remove('hidden');
 }
 
-function onResize() {
+function onResize(restoreClarity = false) {
+  if (restoreClarity) renderScale = Math.max(renderScale, DYN.min);
   camera.aspect = window.innerWidth / window.innerHeight;
   if (!vehicles.riding) camera.fov = viewportFov(50, camera.aspect);
   camera.updateProjectionMatrix();
@@ -388,27 +389,29 @@ function onResize() {
   post.setPixelRatio(renderer.getPixelRatio());
   post.setSize(window.innerWidth, window.innerHeight);
 }
-window.addEventListener('resize', onResize);
+window.addEventListener('resize', () => onResize(true));
 // mobile: the new size can settle a little after the rotation event
-window.addEventListener('orientationchange', () => { onResize(); setTimeout(onResize, 350); });
+window.addEventListener('orientationchange', () => { onResize(true); setTimeout(() => onResize(true), 350); });
 window.visualViewport?.addEventListener('resize', () => {
   if (renderer.domElement.width !== Math.floor(window.innerWidth * renderer.getPixelRatio()) ||
-      renderer.domElement.height !== Math.floor(window.innerHeight * renderer.getPixelRatio())) onResize();
+      renderer.domElement.height !== Math.floor(window.innerHeight * renderer.getPixelRatio())) onResize(true);
 });
 
 // Dynamic resolution: if frames average over ~22 ms (under ~45 fps) for 2 s, step the
-// render scale down (to 0.6 at least); step back up after a long calm stretch. A scale
+// render scale down; low/medium first reduce effects and keep a CSS-pixel clarity floor.
+// Step back up after a long calm stretch. A scale
 // that had to be abandoned is not retried for a while (and longer each time), so it
 // never oscillates. Off in ?shot mode and with ?dynres=0.
 const DYN = {
   on: !SHOT && params.get('dynres') !== '0',
-  min: 0.6, max: QUALITY.renderScale, step: 0.1,
+  get min() { return clarityScaleFloor(window.innerWidth, window.innerHeight, window.devicePixelRatio, QUALITY); },
+  max: QUALITY.renderScale, step: 0.1,
   acc: 0, n: 0, slow: 0, fast: 0, hold: 3, clock: 0,
   failed: new Map(),   // scale -> { until, backoff }: scales that proved too heavy
 };
 const scaleKey = (s) => Math.round(s * 100);
 function setRenderScale(s) {
-  renderScale = Math.round(s * 100) / 100;
+  renderScale = Math.ceil(s * 100 - 1e-8) / 100;
   onResize();
 }
 function dynamicResolution(rawDt) {
@@ -422,6 +425,10 @@ function dynamicResolution(rawDt) {
   DYN.acc = 0; DYN.n = 0;
   DYN.slow = avg > 0.022 ? DYN.slow + 0.5 : 0;
   DYN.fast = avg < 0.0185 ? DYN.fast + 0.5 : 0;
+  if (DYN.slow >= 2 && QUALITY.tier !== 'high' && (sky.lowerShadow() || post.lowerContact())) {
+    DYN.slow = DYN.fast = 0; DYN.hold = 2;
+    return;
+  }
   if (DYN.slow >= 2 && renderScale > DYN.min + 1e-3) {
     // the scale we just left was too heavy: don't retry it for a while (longer each time)
     const f = DYN.failed.get(scaleKey(renderScale));
@@ -439,7 +446,8 @@ function dynamicResolution(rawDt) {
 }
 // GPU time guard: the CPU-side frame time above can't see a GPU that is falling behind
 // until the driver resets it. Where the timer extension exists, a single frame over 250 ms
-// or three in a row over 50 ms step the render scale and the sun shadow map down at once.
+// or three in a row over 50 ms reduce effects. A timeout risk, or exhausted effect savings,
+// can also lower resolution below the ordinary clarity floor.
 const gpuTimer = SHOT || params.get('gpuguard') === '0' ? null : createGpuTimer(renderer.getContext());
 const GUARD = { n: 0, worst: 0, last: 0, slow: 0, since: 10, drops: [], fake: [] };
 function gpuGuard() {
@@ -453,15 +461,16 @@ function gpuGuard() {
     if (ms <= 250 && GUARD.slow < 3) continue;
     GUARD.slow = 0;
     GUARD.since = frames + 1;
-    if (renderScale > DYN.min + 1e-3) {
+    const lighterShadow = sky.lowerShadow(), lighterContact = post.lowerContact();
+    DYN.slow = DYN.fast = 0; DYN.hold = 2;
+    // A timeout risk still takes precedence over the ordinary clarity floor.
+    if ((ms > 250 || !(lighterShadow || lighterContact)) && renderScale > 0.6 + 1e-3) {
       const f = DYN.failed.get(scaleKey(renderScale));
       const backoff = f ? Math.min(f.backoff * 2, 600) : 60;
       DYN.failed.set(scaleKey(renderScale), { until: DYN.clock + backoff, backoff });
       DYN.slow = DYN.fast = 0; DYN.hold = 2;
-      setRenderScale(Math.max(DYN.min, renderScale - DYN.step));
+      setRenderScale(Math.max(0.6, renderScale - DYN.step));
     }
-    sky.lowerShadow();
-    post.lowerContact();
     GUARD.drops.push({ frame: frames, ms: Math.round(ms), scale: renderScale, shadowMap: sky.sun.shadow.mapSize.x });
   }
 }
@@ -471,7 +480,7 @@ window.__gpuGuard = () => ({
 });
 window.__gpuGuardFake = (...ms) => GUARD.fake.push(...ms);   // test hook: pretend slow GPU frames
 window.__loseContext = () => renderer.forceContextLoss();   // test hook: context-loss recovery
-window.__dynres = () => ({ scale: renderScale, pixelRatio: renderer.getPixelRatio(), on: DYN.on });
+window.__dynres = () => ({ scale: renderScale, minScale: DYN.min, pixelRatio: renderer.getPixelRatio(), on: DYN.on });
 
 // Harness hooks
 let fps = 0;

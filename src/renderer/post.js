@@ -131,7 +131,11 @@ export function createPost(renderer, scene, camera, { bloomStrength = 0.16, samp
   composer.addPass(new OutputPass());
   const finish = new ShaderPass(FinishShader);
   composer.addPass(finish);
-  const fxaa = useFxaa ? new ShaderPass(FXAAShader) : null;
+  // Retain edge smoothing without the stock full-strength subpixel blend smearing
+  // fine lettering, road texture and narrow railing bars on the low tier.
+  const fxaa = useFxaa ? new ShaderPass({ ...FXAAShader,
+    fragmentShader: FXAAShader.fragmentShader.replace('float _SubpixelBlending = 1.0;', 'float _SubpixelBlending = 0.35;'),
+  }) : null;
   if (fxaa) composer.addPass(fxaa);
 
   function updateUniforms() {
