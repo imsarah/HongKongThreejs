@@ -219,7 +219,9 @@ Mixamo crowd and open-world driving ([CHANGELOG.md](CHANGELOG.md) has its full h
   the ground-floor fascia below the upstairs windows, keeping the first residential floor
   clear. See [hk-buildings.js](src/world/hk-buildings.js).
 - **Hong Kong street furniture and markings.** The road has double white centre lines,
-  double yellow no-stopping kerb lines and warm yellow zebra crossings. Guard
+  double yellow no-stopping kerb lines and warm yellow zebra crossings. Roadside kerbs and
+  gutter strips use Poly Haven's Concrete Wall 006 scan, including its normal, roughness and
+  occlusion maps, at a consistent scale around corners. Guard
   railings, tall street lamps, orange bins, red hydrants and black traffic-light housings
   replace the beachfront furniture. Street plates show Chinese above English: the main road
   is Hennessy Road, with Percival Street, Lee Garden Road, Pak Sha Road, Kai Chiu Road, Yun

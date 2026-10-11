@@ -596,9 +596,11 @@ function sidewalks() {
 // ---------------------------------------------------------------------------
 // Curbs with rounded top edges + gutter pans, faded painted segments, split at the ramps.
 function curbs(concrete) {
+  const scan = cityTextureSet('concrete_wall_006');
+  const tile = scan ? 2 : 3;
   const pos = [], col = [], uv = [], idx = [];
   const color = new THREE.Color();
-  const CON = new THREE.Color(0xd6cbbb), GUT = new THREE.Color(0xc9beae);
+  const CON = new THREE.Color(scan ? 0xffffff : 0xd6cbbb), GUT = new THREE.Color(scan ? 0xdddddd : 0xc9beae);
   const YEL = new THREE.Color(0xf0c21c), RED = new THREE.Color(0xc23a2c);
   const rnd = mulberry32(101);
   // profile (s = +1: hotel curb whose face looks +x; -1 park curb), [dx from face, y]
@@ -611,15 +613,24 @@ function curbs(concrete) {
     ];
   };
   const rnd2 = mulberry32(102);   // pieces cut short by the intersections (keeps rnd's sequence)
+  // Unwrap along the kerb and across its profile in metres, including the gutter pan.
+  const profileDistances = P => {
+    let length = 0;
+    return P.map((p, i) => {
+      if (i) length += Math.hypot(p[0] - P[i - 1][0], p[1] - P[i - 1][1]);
+      return length;
+    });
+  };
   const run = (s, face, z0, z1, paint, keep = true, r = rnd) => {
     const P = prof(s, face);
+    const across = profileDistances(P);
     const b = pos.length / 3;
     for (let i = 0; i < P.length; i++) {
       const [x, y, k] = P[i];
       color.copy(k === 'g' ? GUT : CON);
       if (k === 'c' && paint && i > 1) color.lerp(paint, r() < 0.12 ? 0.35 : 0.92);   // chipped here and there
       if (!keep) continue;
-      for (const z of [z0, z1]) { pos.push(x, y, z); col.push(color.r, color.g, color.b); uv.push(z / 3, i * 0.05); }
+      for (const z of [z0, z1]) { pos.push(x, y, z); col.push(color.r, color.g, color.b); uv.push(z / tile, across[i] / tile); }
       if (i < P.length - 1) {
         const a = b + i * 2;
         if (s < 0) idx.push(a, a + 1, a + 2, a + 1, a + 3, a + 2); else idx.push(a, a + 2, a + 1, a + 1, a + 2, a + 3);
@@ -628,8 +639,9 @@ function curbs(concrete) {
   };
   const pan = (s, face, z0, z1) => {
     const P = prof(s, face);
+    const across = profileDistances(P);
     const b = pos.length / 3;
-    for (const i of [0, 1]) for (const z of [z0, z1]) { pos.push(P[i][0], P[i][1], z); color.copy(GUT); col.push(color.r, color.g, color.b); uv.push(z / 3, 0); }
+    for (const i of [0, 1]) for (const z of [z0, z1]) { pos.push(P[i][0], P[i][1], z); color.copy(GUT); col.push(color.r, color.g, color.b); uv.push(z / tile, across[i] / tile); }
     if (s < 0) idx.push(b, b + 1, b + 2, b + 1, b + 3, b + 2); else idx.push(b, b + 2, b + 1, b + 1, b + 2, b + 3);
   };
   for (const [s, face] of [[1, SIDEWALK_W.x1], [-1, SIDEWALK_E.x0]]) {
@@ -661,9 +673,12 @@ function curbs(concrete) {
   const path = (pts, cutX) => {
     // pts: [{ x, z, nx, nz }], n pointing to the road; profile [offset along n, y, kind]
     const PR = [[GUTTER_W, 0.004, 'g'], [0.02, 0.004, 'g'], [0, 0, 'c'], [-0.008, CURB_HEIGHT - 0.03, 'c'], [-0.02, CURB_HEIGHT - 0.008, 'c'], [-0.04, CURB_HEIGHT, 'c'], [-CURB_W, CURB_HEIGHT, 'c']];
+    const across = profileDistances(PR);
     const V = (p, q) => [p.x + p.nx * q[0], q[1], p.z + p.nz * q[0]];
+    let along = 0;
     for (let k = 0; k < pts.length - 1; k++) {
       const p = pts[k], q = pts[k + 1];
+      const nextAlong = along + Math.hypot(q.x - p.x, q.z - p.z);
       const mx = (p.x + q.x) / 2;
       const inCut = cutX && mx > cutX[0] && mx < cutX[1];
       for (let i = 0; i < PR.length - 1; i++) {
@@ -676,10 +691,12 @@ function curbs(concrete) {
         const order = flip ? [0, 2, 1, 0, 3, 2] : [0, 1, 2, 0, 2, 3];
         for (const o of order) {
           const v = quad[o];
-          pos.push(v[0], v[1], v[2]); col.push(c.r, c.g, c.b); uv.push((v[0] + v[2]) / 3, i * 0.05);
+          pos.push(v[0], v[1], v[2]); col.push(c.r, c.g, c.b);
+          uv.push((o < 2 ? along : nextAlong) / tile, across[o === 1 || o === 2 ? i + 1 : i] / tile);
           idx.push(pos.length / 3 - 1);
         }
       }
+      along = nextAlong;
     }
   };
   const { hw, R, xw0, xw1 } = CROSS;
@@ -700,7 +717,12 @@ function curbs(concrete) {
   g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
   g.setIndex(idx);
   g.computeVertexNormals();
-  const m = new THREE.Mesh(g, new THREE.MeshStandardMaterial({ map: concrete, vertexColors: true, roughness: 0.85 }));
+  const mat = new THREE.MeshStandardMaterial({ map: scan?.color ?? concrete, vertexColors: true, roughness: scan ? 1 : 0.85,
+    ...(scan ? { normalMap: scan.normal, normalScale: new THREE.Vector2(0.55, 0.55), roughnessMap: scan.arm, aoMap: scan.arm, aoMapIntensity: 0.4 } : {}) });
+  mat.name = 'roadside-concrete';
+  if (scan) concrete.dispose();
+  const m = new THREE.Mesh(g, mat);
+  m.name = 'roadside-kerbs';
   m.receiveShadow = true;
   m.castShadow = true;
   return m;

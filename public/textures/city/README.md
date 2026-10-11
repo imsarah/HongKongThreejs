@@ -9,7 +9,7 @@ Local copies of Poly Haven textures, licensed [CC0](https://polyhaven.com/licens
 | [Concrete Pavement](https://polyhaven.com/a/concrete_pavement) | Charlotte Baglioni | Previous paving, retained as a spare asset | 1.8 m |
 | [Painted Plaster Wall](https://polyhaven.com/a/painted_plaster_wall) | Amal Kumar | Painted building facades | 2 m |
 | [Long White Tiles](https://polyhaven.com/a/long_white_tiles) | Sergej Majboroda, Jenelle van Heerden | Selected tiled facades | 1.27 m |
-| [Concrete Wall 006](https://polyhaven.com/a/concrete_wall_006) | Charlotte Baglioni, Dario Barresi | Canopies, ledges, piers and roofs | 2 m |
+| [Concrete Wall 006](https://polyhaven.com/a/concrete_wall_006) | Charlotte Baglioni, Dario Barresi | Roadside kerbs and gutters; canopies, ledges, piers and roofs | 2 m |
 | [Wood Floor](https://polyhaven.com/a/wood_floor) | Dimitrios Savva | Fashion and jewellery floors; shop counters and tables | 1.7 m |
 | [Terrazzo Tiles](https://polyhaven.com/a/terrazzo_tiles) | Amal Kumar | Other shop floors, except cafe checkerboards | 2 m |
 
@@ -21,6 +21,8 @@ The last four scans are packed into matching 2×2 `building_surfaces` atlases, s
 need only three additional samplers. Each cell has a wrapping gutter and contains a 510 px
 scan on high/medium quality or 254 px on low quality. Facades and concrete use albedo,
 normals, roughness and occlusion. Ray-traced shop rooms use albedo and occlusion.
+Roadside kerbs and gutter pans use the standalone Concrete Wall 006 maps, with UVs measured
+along the kerb and across its profile. Curved returns keep the same 2 m texture scale.
 
 `sources.json` records the original download URLs, verified MD5 hashes, authors, and generated
 file sizes. Run `node tools/import-polyhaven.mjs` from the repository root to regenerate these
