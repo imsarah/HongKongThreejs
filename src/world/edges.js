@@ -1,7 +1,7 @@
 // The world's soft ends, made diegetic: a row of road-closed barricades and cones across
 // Ocean Drive a little inside each open end (z ±560 on the extent) and across each near cross
 // street toward its west end, where the vehicles' turn-back steering and the walker's slow-down
-// begin. They are soft: knockable like the bins (world/props-dyn.js), and the extent's taper
+// begin. They are soft: knockable props (world/props-dyn.js), and the extent's taper
 // still turns the player round beyond them. Geometry and the prop list only; props-dyn draws
 // them. Open world only (never in ?shot).
 import * as THREE from 'three';

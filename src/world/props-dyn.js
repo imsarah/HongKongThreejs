@@ -1,12 +1,12 @@
-// Knockable street props (open world): the sidewalk bins and news boxes (street.js
+// Knockable street props (open world): the roadside railings and sidewalk news boxes (street.js
 // KNOCKABLES) and the road-closed barricades and cones at the world's ends (edges.js). One
-// InstancedMesh per part of each kind; each prop has a live collider circle (the walker and
+// InstancedMesh per part of each kind; each prop has live circle or box colliders (the walker and
 // the vehicles see it; people plan round its spot). The ridden vehicle hitting one faster
 // than KNOCK_SPEED knocks it: the collider goes, it is launched off the bumper (the car's
 // velocity scaled by the mass ratio, an up kick, a tumble), flies, bounces, rolls and comes
 // to rest on its side, and the car loses a little speed. Slower, the prop is solid. A knocked
 // prop is stood back up RESET_T s later once it is out of view. Palms, lamps, signal poles,
-// pay stations and hydrants stay solid (they are not in here).
+// pay stations stay solid (they are not in here).
 import * as THREE from 'three';
 
 export const KNOCK_SPEED = 1.5;     // m/s
@@ -16,7 +16,8 @@ const _m = new THREE.Matrix4(), _q = new THREE.Quaternion(), _q2 = new THREE.Qua
 const _ax = new THREE.Vector3(), _Y = new THREE.Vector3(0, 1, 0), _f = new THREE.Frustum(), _pm = new THREE.Matrix4(), _sph = new THREE.Sphere();
 
 // kinds: { [kind]: { parts: [{ geo, mat }], mass (kg), h (height m), lie (radius lying down, m) } }
-// items: [{ kind, x, y, z, rot, r }]
+// items: [{ kind, x, y, z, rot, r, box? }]; a box is indexed in the static collision grid
+// and disabled while its prop is down, avoiding many circles along each thin railing.
 export function createDynProps(scene, { kinds, items, groundAt, requestShadow = () => {}, shadows = true }) {
   const byKind = new Map();
   const props = [];
@@ -33,8 +34,9 @@ export function createDynProps(scene, { kinds, items, groundAt, requestShadow = 
     // colliders: one circle, or three along the long side (`span`: half its length less r)
     const offs = it.span ? [-it.span, 0, it.span] : [0];
     const ca = Math.cos(it.rot ?? 0), sa = Math.sin(it.rot ?? 0);
-    p.cols = offs.map((o) => ({ x: it.x + o * ca, z: it.z - o * sa, r: it.r ?? 0.3, r0: it.r ?? 0.3, knock: true, prop: p }));
-    p.col = p.cols[1] ?? p.cols[0];
+    p.cols = it.box ? [] : offs.map((o) => ({ x: it.x + o * ca, z: it.z - o * sa, r: it.r ?? 0.3, r0: it.r ?? 0.3, knock: true, prop: p }));
+    if (p.box) { p.box.prop = p; p.box.disabled = false; }
+    p.col = p.box ?? p.cols[1] ?? p.cols[0];
     let list = byKind.get(it.kind);
     if (!list) byKind.set(it.kind, (list = []));
     p.i = list.length;
@@ -58,6 +60,7 @@ export function createDynProps(scene, { kinds, items, groundAt, requestShadow = 
     for (const m of K.meshes) { m.instanceMatrix.needsUpdate = true; m.computeBoundingSphere(); }
   }
   const colliders = props.flatMap((p) => p.cols);
+  const boxColliders = props.filter((p) => p.box).map((p) => p.box);
 
   function write(p) {
     _m.compose(p.pos, p.q, _s);
@@ -66,18 +69,26 @@ export function createDynProps(scene, { kinds, items, groundAt, requestShadow = 
 
   // v: the ridden vehicle (sim body, with circlesWorld); returns the props knocked this step
   const knocked = [];
-  function sweep(v) {
+  function sweep(v, dt = 1 / 60) {
     knocked.length = 0;
     if (!v) return knocked;
     const sp = Math.hypot(v.vx, v.vz);
     if (sp < KNOCK_SPEED) return knocked;
     const reach = (v.spec.length ?? 4.5) / 2 + 1.5;
     for (const p of props) {
-      if (p.state !== 'rest' || Math.abs(p.pos.x - v.x) > reach || Math.abs(p.pos.z - v.z) > reach) continue;
+      const rx = reach + (p.box ? (p.box.max.x - p.box.min.x) / 2 : 0);
+      const rz = reach + (p.box ? (p.box.max.z - p.box.min.z) / 2 : 0);
+      if (p.state !== 'rest' || Math.abs(p.pos.x - v.x) > rx || Math.abs(p.pos.z - v.z) > rz) continue;
       let hit = null;
       for (const c of v.circlesWorld) {
         // (a step ahead: the contact would have stopped the car short of it)
-        const cx = c.x + v.vx / 60, cz = c.z + v.vz / 60;
+        const cx = c.x + v.vx * dt, cz = c.z + v.vz * dt;
+        if (p.box) {
+          const b = p.box;
+          const qx = Math.max(b.min.x, Math.min(cx, b.max.x));
+          const qz = Math.max(b.min.z, Math.min(cz, b.max.z));
+          if (Math.hypot(qx - cx, qz - cz) < c.r + 0.08) hit = c;
+        }
         for (const q of p.cols) if (Math.hypot(q.x - cx, q.z - cz) < c.r + q.r0 + 0.08) { hit = c; break; }
         if (hit) break;
       }
@@ -100,7 +111,8 @@ export function createDynProps(scene, { kinds, items, groundAt, requestShadow = 
     p.w.copy(_ax).multiplyScalar(sp * (1.2 + Math.random())).addScaledVector(_Y, (Math.random() - 0.5) * 6);
     p.state = 'fly'; p.t = 0; p.bounces = 0;
     for (const q of p.cols) q.r = 0;
-    // the car pays the momentum (a bin is nothing, a barricade a nudge)
+    if (p.box) p.box.disabled = true;
+    // the car loses momentum in proportion to the prop's mass
     const loss = Math.min(0.2, (m / M) * 1.4);
     v.vx *= 1 - loss; v.vz *= 1 - loss; v.lon *= 1 - loss;
     p.knocks = (p.knocks ?? 0) + 1;
@@ -172,12 +184,13 @@ export function createDynProps(scene, { kinds, items, groundAt, requestShadow = 
     p.vel.set(0, 0, 0); p.w.set(0, 0, 0); p.downQ = null;
     p.state = 'rest'; p.t = 0;
     for (const q of p.cols) q.r = q.r0;
+    if (p.box) p.box.disabled = false;
     write(p);
     requestShadow();
   }
 
   return {
-    props, colliders, meshes, sweep, update, reset,
+    props, colliders, boxColliders, meshes, sweep, update, reset,
     get moving() { return flying; },
     // test / shot hooks
     nearest(x, z, kind = null) { let b = null, bd = Infinity; for (const p of props) { if (kind && p.kind !== kind) continue; const d = Math.hypot(p.pos.x - x, p.pos.z - z); if (d < bd) { bd = d; b = p; } } return b; },

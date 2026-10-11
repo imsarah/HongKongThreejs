@@ -148,14 +148,14 @@ const walkWorld = {
   heightAt: beach.heightAt,
   boxes: [
     // (the drivable hero car collides as the vehicle's moving circles instead of its box)
-    ...STREET_COLLIDERS.filter((c) => c.min), ...cars.colliders.filter((c) => !(c.hero && cars.drive && !SHOT)), ...beach.colliders,
+    ...STREET_COLLIDERS.filter((c) => c.min && !c.knock), ...cars.colliders.filter((c) => !(c.hero && cars.drive && !SHOT)), ...beach.colliders,
     // (west row: from the shopfronts back; east row: from the shopfronts on)
     ...hotels.userData.footprints.map((f) => (f.side > 0
       ? { min: { x: f.fx, y: -5, z: f.z0 }, max: { x: 80, y: 120, z: f.z1 } }
       : { min: { x: -80, y: -5, z: f.z0 }, max: { x: f.fx, y: 120, z: f.z1 } })),
   ],
   circles: [
-    // (the knockable bins and news boxes collide as their live props below)
+    // (the knockable news boxes collide as their live props below)
     ...STREET_COLLIDERS.filter((c) => c.r && !c.knock),
   ],
   bounds: { x0: HOTEL.patioX + 0.2, x1: EAST.frontX - 0.2, z0: DISTRICT.zMin, z1: DISTRICT.zMax, soft: 14 },
@@ -169,16 +169,19 @@ if (OPEN_WORLD) {
   walkWorld.softDistance = (x, z) => softDistance(x, z, tier);
   walkWorld.softWidth = EDGE_SOFT.walker;
 }
-// knockable props: the sidewalk bins and news boxes, the road-closed barricades and cones at
+// knockable props: the roadside railings and sidewalk news boxes, barricades and cones at
 // the world's ends (open world)
 const dynProps = OPEN_WORLD && !SHOT ? (() => {
   const mat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.55, metalness: 0.15 });
   const kinds = { ...edgeKinds(mat) };
-  const K = { bin: { mass: 9, lie: 0.3 }, 'news-blue': { mass: 30, lie: 0.24 }, 'news-red': { mass: 30, lie: 0.24 } };
+  const K = { railing: { mass: 65, lie: 0.04 }, 'news-blue': { mass: 30, lie: 0.24 }, 'news-red': { mass: 30, lie: 0.24 } };
   for (const it of KNOCKABLES) if (!kinds[it.kind] && K[it.kind]) kinds[it.kind] = { ...K[it.kind], parts: [{ geo: it.geo, mat }] };
   return createDynProps(scene, { kinds, items: [...KNOCKABLES, ...edgeProps(QUALITY.tier)], groundAt: (x, z) => beach.groundAt(x, z), requestShadow });
 })() : null;
-if (dynProps) walkWorld.circles.push(...dynProps.colliders);
+if (dynProps) {
+  walkWorld.circles.push(...dynProps.colliders);
+  walkWorld.boxes.push(...dynProps.boxColliders);
+}
 window.__props = dynProps;
 const controls = new Walker(camera, renderer.domElement, walkWorld);
 // first frame: hotel sidewalk, looking up the row of sunlit fronts

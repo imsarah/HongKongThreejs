@@ -88,11 +88,11 @@ const sampled = (z0, z1, fx, step = 1) => { const pts = []; for (let z = z0; z <
 function staticGrid(furniture = []) {
   const cell = 4, map = new Map(), all = [];
   const key = (i, j) => i * 100003 + j;
-  const add = (x, z, r) => {
+  const add = (x, z, r, source = null) => {
     const i = Math.floor(x / cell), j = Math.floor(z / cell);
     const k = key(i, j);
     if (!map.has(k)) map.set(k, []);
-    const o = { x, z, r };
+    const o = { x, z, r, source };
     map.get(k).push(o);
     all.push(o);
   };
@@ -106,7 +106,7 @@ function staticGrid(furniture = []) {
       const r = Math.min(w, d) / 2 + 0.05;
       for (let k = 0; k < n; k++) {
         const t = (k + 0.5) / n;
-        add(w > d ? c.min.x + w * t : (c.min.x + c.max.x) / 2, w > d ? (c.min.z + c.max.z) / 2 : c.min.z + d * t, Math.max(r, Math.max(w, d) / n / 2));
+        add(w > d ? c.min.x + w * t : (c.min.x + c.max.x) / 2, w > d ? (c.min.z + c.max.z) / 2 : c.min.z + d * t, Math.max(r, Math.max(w, d) / n / 2), c);
       }
     }
   }
@@ -118,7 +118,7 @@ function staticGrid(furniture = []) {
       const i0 = Math.floor(x / cell), j0 = Math.floor(z / cell);
       for (let i = i0 - 1; i <= i0 + 1; i++) for (let j = j0 - 1; j <= j0 + 1; j++) {
         const l = map.get(key(i, j));
-        if (l) for (const o of l) out.push(o);
+        if (l) for (const o of l) if (!o.source?.disabled) out.push(o);
       }
       return out;
     },

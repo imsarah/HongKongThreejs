@@ -53,6 +53,9 @@ Check the shipped cars, driving interactions, traffic and NPC spacing with:
 node tools/right-hand-drive-test.mjs
 node tools/car-ride-test.mjs
 node tools/any-car-test.mjs
+node tools/props-test.mjs
+node tools/railing-test.mjs
+node tools/railing-scene-test.mjs
 node tools/car-cockpit-test.mjs
 node tools/car-glass-mobile-test.mjs
 node tools/traffic-sim-test.mjs
@@ -78,6 +81,9 @@ inside a traffic spawn, checking that the saved pose survives and traffic flows 
 NPC spacing checks cover duplicate spawn requests, forward and sideways collisions, fast
 steps, and several drivers leaving at the same door. The browser crowd check runs ten
 simulated minutes on every quality tier and checks opposing walkers on a shared route.
+Prop checks cover slow-speed blocking, crash impacts along the full length of a railing,
+fallen sections clearing their collision footprint, and restoration out of view. The live
+scene check also verifies the square metal crossing studs on desktop and mobile.
 
 Phone and tablet views keep enough horizontal field of view in portrait, with a driving HUD,
 readable touch buttons of at least 44 px, and a radio card that fits around the minimap.
@@ -152,9 +158,10 @@ The last car you got out of stays where you left it, across reloads (`localStora
   冰室, 找換, 牙科醫生 and so on), and boards and billboards sit on the facades and rooftops. All are
   drawn into one canvas atlas at load time.
 - **Street furniture and markings, Hong Kong style.**
-  - double white centre lines, double yellow no-stopping lines and warm yellow zebra crossings;
+  - double white centre lines, double yellow no-stopping lines and warm yellow zebra crossings
+    with small square metal studs at both ends of each stripe, replacing the yellow edge lines;
   - galvanised guard railings along the kerbs, tall street lamps lit at dusk;
-  - orange litter bins, red pillar hydrants, black traffic-light housings;
+  - black traffic-light housings;
   - white street-name plates (Chinese over English), 停 STOP signs, metered-parking and
     pedestrian-crossing signs.
 - **Traffic that keeps left.** Cars cruise at 20–30 km/h, keep their distance and stop for
@@ -171,7 +178,8 @@ The last car you got out of stays where you left it, across reloads (`localStora
   and pulls in when a building is in the way. Shift or Caps Lock runs.
 - **Open world.** Ocean Drive's open-world driving carries over:
   - any parked or stopped traffic car can be taken, and its driver gets out and walks off;
-  - knockable bins, and road-closed barricades and cones at the ends;
+  - roadside railing sections that stay solid at low speed and fall over when hit at speed;
+  - knockable news boxes, and road-closed barricades and cones at the ends;
   - dents on the modern cars;
   - a minimap and a generative car radio.
 - **Light.** A late-afternoon sun from the south-west, low enough to throw the towers' shadows
@@ -233,11 +241,15 @@ Mixamo crowd and open-world driving ([CHANGELOG.md](CHANGELOG.md) has its full h
   the ground-floor fascia below the upstairs windows, keeping the first residential floor
   clear. See [hk-buildings.js](src/world/hk-buildings.js).
 - **Hong Kong street furniture and markings.** The road has double white centre lines,
-  double yellow no-stopping kerb lines and warm yellow zebra crossings. Roadside kerbs and
+  double yellow no-stopping kerb lines and warm yellow zebra crossings. Crossing edge lines
+  are replaced by low metal studs with square bases and shallow pointed tops, one at each
+  end of every painted stripe on both the main road and side streets. Roadside kerbs and
   gutter strips use Poly Haven's Concrete Wall 006 scan, including its normal, roughness and
   occlusion maps, at a consistent scale around corners. Guard
-  railings, tall street lamps, orange bins, red hydrants and black traffic-light housings
-  replace the beachfront furniture. Street plates show Chinese above English: the main road
+  railings, tall street lamps and black traffic-light housings
+  replace the beachfront furniture; rubbish bins and fire hydrants have been removed
+  throughout the district. Cars can knock over individual railing sections in a crash.
+  Street plates show Chinese above English: the main road
   is Hennessy Road, with Percival Street, Lee Garden Road, Pak Sha Road, Kai Chiu Road, Yun
   Ping Road and Sugar Street at the side streets. Stop, parking and pedestrian-crossing signs
   follow the new setting. See [street.js](src/world/street.js).

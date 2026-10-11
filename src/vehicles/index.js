@@ -667,7 +667,7 @@ export function createVehicles(scene, {
       }
     }
     // knockable props in the way at speed go flying before the contact would stop the car
-    const knocked = props?.sweep(v);
+    const knocked = props?.sweep(v, dt);
     stepVehicle(v, input, dt, world);
     if (knocked?.length && !v.hit) { const p = knocked[0]; v.hit = { speed: Math.min(4, Math.hypot(v.vx, v.vz) * 0.4), tangent: 0, px: p.pos.x, pz: p.pos.z, nx: 0, nz: 0, material: 'prop', obj: null }; }
     if (offReq && Math.abs(v.lon) < 1.0) dismount();

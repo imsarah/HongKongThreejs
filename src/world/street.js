@@ -293,6 +293,7 @@ function markings() {
   c.putImageData(img, 0, 0);
   const map = tex(cv);
   const pos = [], col = [], uv = [], idx = [];
+  const studs = [];
   const color = new THREE.Color();
   const quad = (x0, x1, z0, z1, hex, fade = 1, segX = 1) => {
     color.setHex(hex).multiplyScalar(fade);
@@ -348,14 +349,16 @@ function markings() {
     quadH(stopX - 0.45, stopX, c.z - hw + GUTTER_W, c.z - 0.2, WHT, 0.9, 1, 6);
     if (c.far) continue;
     // continental crosswalk over the cross street, bars along its traffic
-    for (let z = c.z - hw + GUTTER_W + 1.0; z < c.z + hw - GUTTER_W - 1.3; z += 1.2) quadH(xw0 + 0.35, xw1 - 0.35, z, z + 0.6, CROSSING, 0.95, 4, 1);
-    quadH(xw0, xw0 + 0.3, c.z - hw + GUTTER_W, c.z + hw - GUTTER_W, CROSSING, 0.95, 1, 12);
-    quadH(xw1 - 0.3, xw1, c.z - hw + GUTTER_W, c.z + hw - GUTTER_W, CROSSING, 0.95, 1, 12);
+    for (let z = c.z - hw + GUTTER_W + 1.0; z < c.z + hw - GUTTER_W - 1.3; z += 1.2) {
+      quadH(xw0 + 0.35, xw1 - 0.35, z, z + 0.6, CROSSING, 0.95, 4, 1);
+      for (const x of [xw0 + 0.15, xw1 - 0.15]) studs.push({ x, z: z + 0.3 });
+    }
     // crosswalks over Ocean Drive on the north and south legs
     for (const [z0, z1] of crossLegs(c.z)) {
-      for (let x = PARKING.x0 + GUTTER_W + 1.0; x < LANES.x1 - GUTTER_W - 1.3; x += 1.2) quad(x, x + 0.6, z0 + 0.4, z1 - 0.4, CROSSING, 0.95);
-      quad(PARKING.x0 + GUTTER_W, LANES.x1 - GUTTER_W, z0, z0 + 0.3, CROSSING, 0.95, 16);
-      quad(PARKING.x0 + GUTTER_W, LANES.x1 - GUTTER_W, z1 - 0.3, z1, CROSSING, 0.95, 16);
+      for (let x = PARKING.x0 + GUTTER_W + 1.0; x < LANES.x1 - GUTTER_W - 1.3; x += 1.2) {
+        quad(x, x + 0.6, z0 + 0.4, z1 - 0.4, CROSSING, 0.95);
+        for (const z of [z0 + 0.15, z1 - 0.15]) studs.push({ x: x + 0.3, z });
+      }
     }
     // stop bars on Ocean Drive's approaches (cars hold here for the crossing and the signal)
     {
@@ -365,10 +368,11 @@ function markings() {
       quad(PARKING.x1, cx - 0.2, s[1] + 1.6, s[1] + 2.0, WHT, 0.9, 6);
     }
   }
-  // zebra crossing: bars parallel to traffic, framed by two rails
-  for (let x = PARKING.x0 + GUTTER_W + 1.0; x < LANES.x1 - GUTTER_W - 1.3; x += 1.2) quad(x, x + 0.6, CW.z0 + 0.4, CW.z1 - 0.4, CROSSING, 0.95);
-  quad(PARKING.x0 + GUTTER_W, LANES.x1 - GUTTER_W, CW.z0, CW.z0 + 0.3, CROSSING, 0.95, 16);
-  quad(PARKING.x0 + GUTTER_W, LANES.x1 - GUTTER_W, CW.z1 - 0.3, CW.z1, CROSSING, 0.95, 16);
+  // zebra crossing: each bar has a metal stud at both ends, with no painted edge lines
+  for (let x = PARKING.x0 + GUTTER_W + 1.0; x < LANES.x1 - GUTTER_W - 1.3; x += 1.2) {
+    quad(x, x + 0.6, CW.z0 + 0.4, CW.z1 - 0.4, CROSSING, 0.95);
+    for (const z of [CW.z0 + 0.15, CW.z1 - 0.15]) studs.push({ x: x + 0.3, z });
+  }
   // stop bars
   quad(cx + 0.2, LANES.x1 - GUTTER_W, CW.z0 - 2.0, CW.z0 - 1.6, WHT, 0.9, 6);
   quad(PARKING.x1, cx - 0.2, CW.z1 + 1.6, CW.z1 + 2.0, WHT, 0.9, 6);
@@ -389,8 +393,40 @@ function markings() {
   };
   mat.customProgramCacheKey = () => 'street-paint-v2';
   const m = new THREE.Mesh(g, mat);
+  m.name = 'road-markings';
   m.receiveShadow = true;
-  return m;
+  const group = new THREE.Group();
+  group.add(m, crossingStuds(studs));
+  return group;
+}
+
+// Low cast-metal crossing studs: 14 cm square, 6 mm base and an 18 mm pointed top.
+// One instanced draw call covers both sides of every stripe, including the side streets.
+function crossingStuds(positions) {
+  const base = new THREE.BoxGeometry(0.14, 0.006, 0.14).translate(0, 0.003, 0);
+  const tip = new THREE.ConeGeometry(0.14 / Math.sqrt(2), 0.018, 4)
+    .rotateY(Math.PI / 4).translate(0, 0.015, 0);
+  const geometry = mergeGeometries([base, tip]);
+  const mat = new THREE.MeshStandardMaterial({ color: 0xb8bdc0, metalness: 0.8, roughness: 0.34 });
+  const mesh = new THREE.InstancedMesh(geometry, mat, positions.length);
+  mesh.name = 'crossing-studs';
+  mesh.castShadow = mesh.receiveShadow = true;
+  const pose = new THREE.Object3D(), normal = new THREE.Vector3(), up = new THREE.Vector3(0, 1, 0);
+  const height = (x, z) => {
+    const cross = crossStreetAt(z);
+    return cross && x < SIDEWALK_W.x1 ? crossRoadHeight(x, z - cross.z) : roadHeight(x);
+  };
+  positions.forEach(({ x, z }, i) => {
+    normal.set((height(x - 0.05, z) - height(x + 0.05, z)) / 0.1, 1,
+      (height(x, z - 0.05) - height(x, z + 0.05)) / 0.1).normalize();
+    pose.position.set(x, height(x, z) + 0.001, z);
+    pose.quaternion.setFromUnitVectors(up, normal);
+    pose.updateMatrix();
+    mesh.setMatrixAt(i, pose.matrix);
+  });
+  mesh.instanceMatrix.needsUpdate = true;
+  mesh.computeBoundingSphere();
+  return mesh;
 }
 
 // ---------------------------------------------------------------------------
@@ -780,25 +816,6 @@ function payStationGeo() {
     box(0.44, 0.05, 0.34, 0, 1.45, 0, 0x2f3338),
   ]);
 }
-function trashGeo() {
-  // the street litter bin: an orange drum, a dark lid and its slot
-  return mergeGeometries([
-    cyl(0.26, 0.28, 0.85, 20, 0, 0xe2732a),
-    cyl(0.29, 0.29, 0.06, 20, 0.85, 0x2e3a33),
-    colored(new THREE.SphereGeometry(0.29, 16, 6, 0, Math.PI * 2, 0, Math.PI / 2).scale(1, 0.3, 1).translate(0, 0.91, 0), 0x2e3a33),
-    box(0.2, 0.06, 0.02, 0, 0.72, 0.27, 0x1b1b1b),
-  ]);
-}
-function hydrantGeo() {
-  // a red pillar hydrant with brass caps
-  return mergeGeometries([
-    cyl(0.16, 0.16, 0.06, 12, 0, 0xa8231c),
-    cyl(0.12, 0.12, 0.55, 12, 0.06, 0xc0281f),
-    colored(new THREE.SphereGeometry(0.12, 12, 6, 0, Math.PI * 2, 0, Math.PI / 2).translate(0, 0.61, 0), 0xc0281f),
-    colored(new THREE.CylinderGeometry(0.05, 0.05, 0.36, 8).rotateZ(Math.PI / 2).translate(0, 0.4, 0), 0xb89a40),
-    colored(new THREE.CylinderGeometry(0.065, 0.065, 0.12, 8).rotateX(Math.PI / 2).translate(0, 0.38, 0.12), 0xb89a40),
-  ]);
-}
 // pedestrian guard railing along the kerb: a 4 m run of posts, rails and bars (along z)
 function railGeo() {
   const C = 0xa9afaf, parts = [];
@@ -862,8 +879,8 @@ function signPostGeo(h) {
 
 // Walk colliders for street furniture: { x, z, r } circles or { min, max } boxes.
 export const STREET_COLLIDERS = [];
-// Open world: the bins and news boxes are knockable (world/props-dyn.js draws and moves them):
-// { kind, geo (at the origin), x, y, z, rot, r }. Their STREET_COLLIDERS circle is flagged
+// Open world: the railings and news boxes are knockable (world/props-dyn.js draws and moves them):
+// { kind, geo (at the origin), x, y, z, rot, r?, box? }. Their STREET_COLLIDERS entry is flagged
 // `knock` (the people still plan round the spot; the walker and the vehicles use the prop's
 // own live collider instead). ?shot / ?openworld=0: merged into the furniture as before.
 export const KNOCKABLES = [];
@@ -873,6 +890,21 @@ function placeKnock(list, kind, g, x, y, z, rotY, r) {
   if (!FORCE && blocksCrossing(x, z)) return false;
   KNOCKABLES.push({ kind, geo: g, x, y, z, rot: rotY, r });
   STREET_COLLIDERS.push({ x, z, r, knock: true });
+  return true;
+}
+// A railing keeps its thin, continuous box footprint rather than a row of broad circles.
+function placeRail(list, g, x, y, z) {
+  if (!KNOCK) return place(list, g, x, y, z, 0, 'box');
+  if (!FORCE && blocksCrossing(x, z)) return false;
+  g.computeBoundingBox();
+  const b = g.boundingBox;
+  const collider = {
+    min: { x: x + b.min.x, y: y + b.min.y, z: z + b.min.z },
+    max: { x: x + b.max.x, y: y + b.max.y, z: z + b.max.z },
+    knock: true,
+  };
+  KNOCKABLES.push({ kind: 'railing', geo: g, x, y, z, rot: 0, box: collider });
+  STREET_COLLIDERS.push(collider);
   return true;
 }
 
@@ -908,7 +940,7 @@ function furniture() {
   const rnd = mulberry32(111);
   const palmNear = (x, z, d) => PALM_TREES.some((t) => Math.hypot(t.x - x, t.z - z) < d);
   const L = [];
-  const lamp = lampGeo(), pay = payStationGeo(), trash = trashGeo(), hyd = hydrantGeo(), bench = benchGeo(), rail = railGeo();
+  const lamp = lampGeo(), pay = payStationGeo(), bench = benchGeo(), rail = railGeo();
   const drainW = drainGeo(1), drainE = drainGeo(-1), manhole = manholeGeo();
   const H = CURB_HEIGHT;
   const hx = SIDEWALK_W.x1 - 0.55, px = SIDEWALK_E.x0 + 0.55;
@@ -917,7 +949,6 @@ function furniture() {
       let q = zz;
       if (Math.abs(q - CROSSWALK_Z) < 3) q += 4;
       placeLamp(L, lamp, x, H, q);
-      if (rnd() < 0.55) placeKnock(L, 'bin', trash, x, H, q + 1.6 * (rnd() < 0.5 ? 1 : -1), 0, 0.3);
     }
   }
   // parking meters along the west parking bays
@@ -926,9 +957,6 @@ function furniture() {
     while (Math.abs(q - CAR.z) < 3) q += 1.5;
     place(L, pay, hx + 0.05, H, q, -Math.PI / 2, 'box');
   }
-  for (const z of [16, 4, -21, -47]) placeKnock(L, 'bin', trash, hx - 0.1, H, z, 0, 0.3);
-  // hydrants
-  for (const [x, z] of [[hx + 0.15, -33], [hx + 0.15, 22], [px - 0.15, -8], [px - 0.15, 46], [hx + 0.15, -110], [px - 0.15, 120]]) place(L, hyd, x, H, z, 0, 0.2);
   // guard railings: the east kerb all along (a gap now and then), the west kerb either side
   // of each crossing (the parking bays run between)
   {
@@ -937,11 +965,11 @@ function furniture() {
     const rx = SIDEWALK_E.x0 + 0.25;
     for (let z = -DISTRICT.zMax + 2; z < DISTRICT.zMax - 2; z += 4) {
       if (nearCrossing(z) || ((z + 400) % 36) < 4) continue;
-      place(L, rail, rx, H, z, 0, 'box');
+      placeRail(L, rail, rx, H, z);
     }
     const wx = SIDEWALK_W.x1 - 0.25;
     for (const [a, b] of crossings) {
-      for (const z of [a - 4.6, a - 8.6, b + 4.6, b + 8.6]) if (!crossStreetAt(z, 2)) place(L, rail, wx, H, z, 0, 'box');
+      for (const z of [a - 4.6, a - 8.6, b + 4.6, b + 8.6]) if (!crossStreetAt(z, 2)) placeRail(L, rail, wx, H, z);
     }
   }
   // storm drains at both curbs, manholes in the lanes
@@ -963,10 +991,10 @@ function furniture() {
   const mat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.55, metalness: 0.15 });
   const m = new THREE.Mesh(mergeGeometries(L), mat);
   m.castShadow = m.receiveShadow = true;
-  return [m, signs(posts, regs), ...districtFurniture(mat, { lamp, pay, trash, hyd, bench, drainW, drainE, manhole, palmNear })];
+  return [m, signs(posts, regs), ...districtFurniture(mat, { lamp, pay, bench, drainW, drainE, manhole, palmNear })];
 }
 
-// The extended blocks: lamps, bins, pay stations, drains, benches and hydrants beyond the
+// The extended blocks: lamps, pay stations, drains and benches beyond the
 // original ranges, plus the intersection furniture (street-name blades, stop signs, one
 // signal). One merged mesh per block so far blocks can be culled.
 // the 11 ST signal's lit lenses: set('green' | 'yellow' | 'red', crossState)
@@ -993,7 +1021,6 @@ function districtFurniture(mat, G) {
       while (G.palmNear(x, q, 3.2)) q += 1.2;
       if (!within(q)) continue;
       placeLamp(L, G.lamp, x, H, q);
-      if (rnd() < 0.55) placeKnock(L, 'bin', G.trash, x, H, q + 1.6 * (rnd() < 0.5 ? 1 : -1), 0, 0.3);
     }
   }
   for (const s of [-1, 1]) {
@@ -1007,7 +1034,6 @@ function districtFurniture(mat, G) {
       const x = LANE_C[rnd() < 0.5 ? 0 : 1] + (rnd() - 0.5) * 1.2;
       place(L, G.manhole, x, roadHeight(x) + 0.002, s * z);
     }
-    [160, 232, 268, 330].forEach((z, i) => place(L, G.hyd, i % 2 ? px - 0.15 : hx + 0.15, H, s * z, 0, 0.2));
   }
   // intersections
   const lit = [], blades = [], stops = [];
@@ -1041,7 +1067,7 @@ function districtFurniture(mat, G) {
     place(L, signalHeadGeo(), west.x - 0.2, H + 2.6, west.z, -Math.PI / 2);
     lit.push({ x: west.x - 0.2, y: H + 2.6, z: west.z, rot: -Math.PI / 2, lamp: 0 });
   }
-  // lamps and the odd hydrant / bin on the cross-street sidewalks, out past the hotels
+  // lamps on the cross-street sidewalks, out past the hotels
   for (const c of NEAR_CROSS) {
     for (const s of [-1, 1]) {
       const z = c.z + s * (CROSS.hw + 0.75);
@@ -1049,8 +1075,6 @@ function districtFurniture(mat, G) {
         let x = x0;
         while (G.palmNear(x, z, 1.6)) x -= 1.2;
         placeLamp(L, G.lamp, x, H, z, s * Math.PI / 2);
-        if (rnd() < 0.3) placeKnock(L, 'bin', G.trash, x - 1.6, H, z, 0, 0.3);
-        else if (rnd() < 0.2) place(L, G.hyd, x - 2.2, H, z + s * 0.2, 0, 0.2);
       }
     }
   }
