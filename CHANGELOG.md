@@ -1,11 +1,63 @@
 # Changelog
 
-## 2026-10-11: Restore afternoon sky and depth
+## 2026-10-11: Contact shading and canopy illumination
+
+- Added restrained contact shading around nearby pillars, ledges, people and vehicles. The
+  half-resolution pass uses metre-scale distances and depth-aware blur to keep silhouettes clean.
+- High and medium quality use contact shading; low quality skips it. The GPU time guard can
+  disable and release the pass, and its render targets are included in memory estimates.
+- Existing canopy tubes now illuminate the paving and nearby surfaces with warm area lighting.
+  Six/four/two nearby fixtures are active on high/medium/low quality, fading between locations
+  as the viewer moves. Light sources stay attached to the generated fixtures.
+- Browser checks cover all quality tiers, resizing, both sidewalk light pools, the AO override
+  and release of the contact pass when the GPU time guard triggers.
+
+## 2026-10-11: Scanned building and shop finishes
+
+- Applied Poly Haven's CC0 Long White Tiles and Concrete Wall 006 to selected facades,
+  canopies, ledges, ground-floor piers and roofs, with scanned normals and roughness.
+- Added Wood Floor to fashion/jewellery floors and shop counters, and Terrazzo Tiles to
+  other shop floors. Cafe floors keep their checkerboards; shop walls retain their signs.
+- Packed the four finishes into shared local atlases with smaller low-quality assets,
+  source credits, verified download hashes and reproducible imports.
+- Corrected interior colour sampling to avoid decoding sRGB twice. Checked the new assets,
+  shader rendering, window edges and banner clearance on all three quality tiers.
+
+## 2026-10-11: Facade weathering and shop interiors
+
+- Added varied grout, chipped tiles, repair patches, uneven grime, and runoff attached
+  beneath actual air conditioners. Weathering retains the fitted window boundaries.
+- Matched shop rooms to their fascia signs using eight interior styles, with product
+  packaging, cafe menus and tables, clothing racks, salon mirrors, and display counters.
+- Aligned each room and sign with its storefront piers. The shared interior atlas uses
+  half resolution on low quality; interior counters add no street geometry.
+- Expanded browser checks to cover all eight interior styles, stable shutters, both
+  street-facing orientations, window corners, and banner clearance on all quality tiers.
+
+## 2026-10-11: Distant character geometry fix
+
+- Excluded Blender's unskinned bone-display helper from character conversion. It had been
+  joined into the far meshes and appeared as large white triangles that vanished up close.
+- Rebuilt all four new characters in both texture tiers and added a browser regression check
+  for unexpected untextured surfaces and far meshes extending beyond the animated body.
+
+## 2026-10-11: Causeway Bay crowd characters
+
+- Added Mixamo's Josh, Shannon, Suzie and Martha as the main pedestrians and drivers,
+  retaining a few of the original characters. Suzie is the player on foot and in cars.
+- Rebound the public rigged models to the shared animation skeletons, preserving walking,
+  running, phone, sitting and driving clips. Added near/far meshes and both texture tiers.
+- Added a reproducible character importer and source credits in `assets/mixamo/MANIFEST.md`.
+- Checked walking, idle and driving poses at both mesh detail levels, plus high/low street
+  scenes and the player avatar. The production build passes.
+
+## 2026-10-11: Modern Evening Street environment
 
 - Restored the original visible sky and directional haze after the full HDRI treatment made
   the sky grey and the distant street too pale.
-- Reduced the HDRI to an 18% contribution to environment lighting while retaining the original
-  sunlight and ambient balance. Car probes again capture the original sky with the local street.
+- Replaced the misty hilltop HDRI with the requested Modern Evening Street by Grzegorz Wronkowski,
+  downloaded at 4K/2K/1K with verified hashes. Its urban lighting drives the environment while
+  the original sunlight, sky and haze retain the scene's depth.
 - Release the source HDR texture after filtering to avoid retaining its full CPU/GPU allocation.
 
 ## 2026-10-11: Photographed HDR sky and lighting

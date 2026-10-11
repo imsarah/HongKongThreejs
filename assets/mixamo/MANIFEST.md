@@ -1,13 +1,45 @@
 # Mixamo assets — from Ocean Drive, now used in Causeway Bay
 
-These are Ocean Drive's Mixamo characters and clips, reused unchanged by the Causeway Bay
-scene (the crowd, the drivers and the player's third-person body). The "intended use" notes
-below are Ocean Drive's.
+Ocean Drive's Mixamo clips and original characters are reused by the Causeway Bay scene.
+Josh, Shannon, Suzie and Martha were added for its pedestrians, drivers and third-person
+player. The "intended use" notes for the animation library below are Ocean Drive's.
 
 Source: [Mixamo](https://www.mixamo.com) (Adobe), downloaded with the project owner's account.
 Licence: royalty-free for use inside this project; the raw `.fbx` files must **not** be redistributed standalone, which is why `assets/mixamo/**/*.fbx` is git-ignored. This manifest is tracked so the set can be re-downloaded.
 
-All files: FBX Binary (`fbx7_2019`). Every character uses the standard Mixamo skeleton (`mixamorig:*` bones), so any animation below can be retargeted onto any character by bone name.
+The original exports below are FBX Binary (`fbx7_2019`). Every character uses the standard Mixamo skeleton (`mixamorig:*` bones), so any animation below can be retargeted onto any character by bone name.
+
+## Causeway Bay characters
+
+Mixamo does not label character ethnicity. These everyday character designs were selected
+visually for the fictional Hong Kong crowd, with some of the original cast retained.
+
+| Character | Mixamo id | Presentation | Clothing |
+|---|---|---|---|
+| Josh | `3bcbf3bf-63f7-435e-ba9e-f3f137aa639d` | Man | Dark jacket, blue shirt, jeans |
+| Shannon | `bc24ef7d-a89b-4789-bdce-21e0b3e20bba` | Man | Football shirt, shorts, socks and boots |
+| Suzie | `503f4a55-0773-461d-b46c-90e5cee9c7d4` | Woman | White blouse and jacket, dark trousers, flats |
+| Martha | `c01a541d-c585-435a-a2b9-5b0524eba790` | Woman | Dark jacket, light top, trousers and heels |
+
+Source: Adobe's public [Mixamo character catalog](https://www.mixamo.com/#/?page=1&type=Character).
+The rigged viewer assets and textures are downloaded directly from Mixamo by
+`tools/import-mixamo.mjs`, cached in ignored `.perf/mixamo/`, and rebound to the existing
+male/female skeleton axes so the project's shared clips play correctly. No new animations
+are needed. The game loads local GLBs and makes no requests to Mixamo.
+
+To rebuild just these models:
+
+```powershell
+node tools/import-mixamo.mjs josh shannon suzie martha
+blender -b --factory-startup --python blender/people.py -- chars josh shannon suzie martha
+node tools/build-people.mjs chars josh shannon suzie martha
+```
+
+Each model includes a near mesh (~30–33k triangles) and a far mesh (~6k), with 1K and
+512 px WebP texture variants. The low quality tier loads only these four characters.
+Suzie is used consistently for the player on foot and in cars.
+
+The original FBX exports and animation list follow.
 
 ## Characters (with skin, T-pose)
 

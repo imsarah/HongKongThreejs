@@ -4,7 +4,7 @@
 //   clips.glb                     every animation clip on ONE Mixamo skeleton (retargeted by
 //                                 bone name), resampled, long idles trimmed
 //   skate.glb                     the roller skate
-// Usage: node tools/build-people.mjs [chars] [clips] [skate]
+// Usage: node tools/build-people.mjs [chars] [clips] [skate] [character names ...]
 import { execSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -19,11 +19,14 @@ fs.mkdirSync(OUT, { recursive: true });
 fs.mkdirSync(TMP, { recursive: true });
 const cli = 'npx -y @gltf-transform/cli@4.5.0';
 const run = (args) => execSync(`${cli} ${args}`, { stdio: ['ignore', 'pipe', 'inherit'] });
-const modes = process.argv.slice(2).length ? process.argv.slice(2) : ['chars', 'clips', 'skate'];
+const args = process.argv.slice(2);
+const modes = args.filter(arg => ['chars', 'clips', 'skate'].includes(arg));
+if (!modes.length) modes.push('chars', 'clips', 'skate');
+const names = args.filter(arg => !['chars', 'clips', 'skate'].includes(arg));
 const kb = (f) => (fs.statSync(f).size / 1024).toFixed(0) + ' KB';
 
 if (modes.includes('chars')) {
-  for (const f of fs.readdirSync(RAW).filter((f) => f.endsWith('.glb') && f !== 'skate.glb' && f !== 'remy.glb')) {
+  for (const f of fs.readdirSync(RAW).filter((f) => f.endsWith('.glb') && f !== 'skate.glb' && f !== 'remy.glb' && (!names.length || names.includes(f.replace('.glb', ''))))) {
     const n = f.replace('.glb', ''), src = path.join(RAW, f);
     const a = path.join(TMP, `${n}-a.glb`), b = path.join(TMP, `${n}-b.glb`), c = path.join(TMP, `${n}-c.glb`);
     run(`dedup "${src}" "${a}"`);

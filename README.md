@@ -1,4 +1,6 @@
-# Causeway Bay · 銅鑼灣
+# HongKongThreejs · Causeway Bay 銅鑼灣
+
+The Hong Kong implementation is on the [`claude/modest-fermi-witbgu` branch](https://github.com/imsarah/HongKongThreejs/tree/claude/modest-fermi-witbgu). The `main` branch currently contains the original Ocean Drive code and this project overview.
 
 A walk, a run and a drive down a Causeway Bay street in Hong Kong on a late afternoon, built in
 Three.js and generated in code. Tong lau walk-ups with balconies and burglar grilles, slim
@@ -24,16 +26,18 @@ Mixamo people and their animations, Poly Haven CC0 texture scans for the road, p
 painted plaster, a Poly Haven HDRI sky, and two Poly Haven normal maps for the car interiors. The city scans include
 albedo, normal and packed occlusion/roughness maps, stored locally as WebP at 1K (high/medium)
 and 512 px (low). [Sources and asset credits](public/textures/city/README.md).
-The HDRI adds a restrained contribution to ambient lighting and reflections; the visible sky
+Modern Evening Street supplies environment lighting and reflections; the visible sky
 and haze retain the original afternoon treatment. Local 4K/2K/1K files are used
 for high/medium/low quality. [HDRI source and lighting notes](public/environments/README.md).
+Nearby canopy tubes cast warm area light onto the paving and surrounding surfaces. High and
+medium quality also add subtle contact shading; low quality keeps the lighter rendering path.
 The shop and sign names are invented: there is no real business, brand or logo anywhere in the
 scene. The street names are real Causeway Bay streets.
 
 ## Running it locally
 
 ```
-git clone https://github.com/imsarah/HongKongThreejs.git
+git clone --branch claude/modest-fermi-witbgu https://github.com/imsarah/HongKongThreejs.git
 cd HongKongThreejs
 npm install
 npm run dev        # http://localhost:5173
@@ -117,7 +121,9 @@ The last car you got out of stays where you left it, across reloads (`localStora
   pedestrians, for the Lee Garden Road signal and for you. About a third of them are red taxis
   with a lit TAXI roof sign. Every car carries a Hong Kong plate: black on yellow at the rear,
   black on white at the front (the numbers are invented).
-- **People.** Mixamo characters walk and hurry along both sidewalks, stand on the phone outside
+- **People.** Mixamo's Josh, Shannon, Suzie and Martha form most of the Hong Kong crowd,
+  alongside a few of the original characters. Suzie is also the player's body on foot and
+  in cars. Characters walk and hurry along both sidewalks, stand on the phone outside
   the shops, and sit in every traffic car. They step out of a car's way.
 - **You.** First person, or third person (V): your character turns to face where you're going
   and blends from idle to walk to run with its speed. The camera sits over the right shoulder

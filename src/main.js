@@ -29,6 +29,7 @@ import { edgeDistance, softDistance, extentBounds, EDGE_SOFT } from './world/ext
 import { createGpuTimer } from './renderer/gpu-timer.js';
 import { preloadCityTextures, cityTextureMaps } from './textures/city.js';
 import { preloadEnvironment } from './textures/environment.js';
+import { createCanopyLighting } from './world/canopy-lighting.js';
 
 const params = new URLSearchParams(location.search);
 const SHOT = params.get('shot') === '1';
@@ -123,6 +124,8 @@ buildPlaceholders(scene);
 await loadStep(0.22, 'Raising the tong lau…'); // LOADER
 await cityTexturesLoad;
 const hotels = await buildHkBuildings(scene, nextFrame);
+const canopyLighting = createCanopyLighting(scene, hotels.userData.canopyLights);
+canopyLighting.update({ position: new THREE.Vector3(-26, 1.85, 40) }, 0.1);
 await loadStep(0.5, 'Laying the street…'); // LOADER
 buildStreet(scene);
 await loadStep(0.55, 'Parking the cars…'); // LOADER
@@ -134,6 +137,7 @@ await loadStep(0.72, 'Lighting the signs…'); // LOADER
 const post = createPost(renderer, scene, camera, {
   ...(params.has('bloom') ? { bloomStrength: parseFloat(params.get('bloom')) } : {}),
   samples: QUALITY.msaa, bloom: QUALITY.bloom, fxaa: QUALITY.fxaa,
+  contactAO: QUALITY.tier !== 'low' && params.get('ao') !== '0',
 });
 
 // --- walking: the hotel terraces are raised, so the facade line stops the walker at the
@@ -442,6 +446,7 @@ function gpuGuard() {
       setRenderScale(Math.max(DYN.min, renderScale - DYN.step));
     }
     sky.lowerShadow();
+    post.lowerContact();
     GUARD.drops.push({ frame: frames, ms: Math.round(ms), scale: renderScale, shadowMap: sky.sun.shadow.mapSize.x });
   }
 }
@@ -464,6 +469,8 @@ window.__setCam = (x, y, z, heading, pitch) => {
   controls.set(x, y, z, heading, pitch);
 };
 window.__renderInfo = () => ({
+  contactAO: !!post.contactAO?.enabled,
+  canopyLights: canopyLighting.active,
   calls: renderer.info.render.calls,
   triangles: renderer.info.render.triangles,
   geometries: renderer.info.memory.geometries,
@@ -477,8 +484,9 @@ window.__gpuBudget = () => {
   const px = renderer.domElement.width * renderer.domElement.height;
   const mb = (b) => +(b / 1048576).toFixed(1);
   const samples = QUALITY.msaa || 1;
-  const post = px * 8 * samples + px * 8 * (samples > 1 ? 2 : 1)   // MSAA half-float + resolve + ping-pong
+  const postBytes = px * 8 * samples + px * 8 * (samples > 1 ? 2 : 1)   // MSAA half-float + resolve + ping-pong
     + (QUALITY.bloom ? px * 8 * 0.67 : 0);                          // bloom mip chain (~2/3 of full res, x2)
+  const contactBytes = post.contactMemoryBytes;
   const sm = sky.sun.shadow.mapSize, shadow = sm.x * sm.y * 4;
   let tex = 0;
   const seen = new Set();
@@ -496,7 +504,7 @@ window.__gpuBudget = () => {
   });
   cityTextureMaps().forEach(countTexture); // includes the facade shader's custom samplers
   sky.textures.forEach(countTexture);
-  return { canvasMP: +(px / 1e6).toFixed(2), postMB: mb(post + px * 4), shadowMB: mb(shadow), texturesMB: mb(tex), totalMB: mb(post + px * 4 + shadow + tex) };
+  return { canvasMP: +(px / 1e6).toFixed(2), postMB: mb(postBytes + px * 4 + contactBytes), contactMB: mb(contactBytes), shadowMB: mb(shadow), texturesMB: mb(tex), totalMB: mb(postBytes + px * 4 + contactBytes + shadow + tex) };
 };
 window.__sceneReady = false;
 
@@ -547,6 +555,7 @@ function frame(t) {
   }
   prof('audio');
   sky.update(camera);
+  canopyLighting.update(camera, dt);
   if (updateLod(camera)) requestShadow(); // DISTRICT
   prof('sky+lod');
   people.update(dt, camera); // PEOPLE

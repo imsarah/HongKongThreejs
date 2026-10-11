@@ -3,17 +3,17 @@
 // blending its idle, walk and run clips by ground speed (each clip's playback matched to the
 // speed so the planted foot doesn't slide). Hidden in first person and while riding.
 import * as THREE from 'three';
-import { createPerson } from '../world/mixamo.js';
+import { createPerson, playerCharacter } from '../world/mixamo.js';
 
 const lin = (hex, a = 1) => { const c = new THREE.Color(hex); return [c.r, c.g, c.b, a]; };
 const smooth = (a, b, v) => { const t = THREE.MathUtils.clamp((v - a) / (b - a), 0, 1); return t * t * (3 - 2 * t); };
 
 export function createAvatar(scene, assets, walker) {
   const chars = assets?.chars ?? {};
-  const name = chars.megan ? 'megan' : Object.keys(chars)[0];
+  const name = playerCharacter(chars);
   if (!name) return null;
-  const female = ['megan', 'sophie', 'elizabeth'].includes(name);
-  // (the same light-blue tee as the player's body at the wheel)
+  const female = chars[name].fem;
+  // The same light-blue outfit as the player's body at the wheel.
   const P = createPerson(chars[name], { tints: [lin(0xb9d3e3, 0.85), null, null], shadow: true });
   P.root.name = 'player-avatar';
   scene.add(P.root);

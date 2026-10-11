@@ -1,4 +1,4 @@
-// Post chain: RenderPass -> bloom (sun / glitter only) -> camera grade -> OutputPass.
+// Post chain: scene -> contact shading -> bloom -> camera grade -> output/finish.
 import * as THREE from 'three';
 import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
@@ -7,6 +7,7 @@ import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { FXAAShader } from 'three/addons/shaders/FXAAShader.js';
 import { sunDir } from '../sky.js';
+import { ContactAOPass } from './contact-ao.js';
 
 // Operates on linear HDR scene colour, before tone mapping.
 const GradeShader = {
@@ -110,7 +111,7 @@ const _fwd = new THREE.Vector3(), _sp = new THREE.Vector3();
 
 // Quality knobs: samples = MSAA of the scene target (0 = none), bloom = add the bloom
 // pass, fxaa = a final FXAA pass (cheap edge smoothing when there is no MSAA).
-export function createPost(renderer, scene, camera, { bloomStrength = 0.16, samples = 4, bloom: useBloom = true, fxaa: useFxaa = false } = {}) {
+export function createPost(renderer, scene, camera, { bloomStrength = 0.16, samples = 4, bloom: useBloom = true, fxaa: useFxaa = false, contactAO: useAO = true } = {}) {
   const size = renderer.getDrawingBufferSize(new THREE.Vector2());
   const rt = new THREE.WebGLRenderTarget(size.x, size.y, { type: THREE.HalfFloatType, samples });
   const composer = new EffectComposer(renderer, rt);
@@ -118,6 +119,8 @@ export function createPost(renderer, scene, camera, { bloomStrength = 0.16, samp
   composer.renderTarget2.samples = 0;
 
   composer.addPass(new RenderPass(scene, camera));
+  const contactAO = useAO ? new ContactAOPass(scene, camera) : null;
+  if (contactAO) composer.addPass(contactAO);
 
   const bloom = useBloom ? new UnrealBloomPass(new THREE.Vector2(size.x, size.y), bloomStrength, 0.25, 4.0) : null;
   if (bloom) composer.addPass(bloom);
@@ -146,6 +149,14 @@ export function createPost(renderer, scene, camera, { bloomStrength = 0.16, samp
   return {
     composer,
     bloom,
+    contactAO,
+    get contactMemoryBytes() { return contactAO?.enabled ? contactAO.memoryBytes : 0; },
+    lowerContact() {
+      if (!contactAO?.enabled) return false;
+      contactAO.enabled = false;
+      contactAO.dispose();
+      return true;
+    },
     grade,
     setSize,
     // call after renderer.setPixelRatio (dynamic resolution)

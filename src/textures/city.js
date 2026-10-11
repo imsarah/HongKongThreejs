@@ -8,7 +8,7 @@ export function preloadCityTextures() {
   if (pending) return pending;
   const size = QUALITY.tier === 'low' ? 512 : 1024;
   const loader = new THREE.TextureLoader();
-  pending = Promise.all(['asphalt_02', 'herringbone_brick_03', 'painted_plaster_wall'].map(async id => {
+  pending = Promise.all(['asphalt_02', 'herringbone_brick_03', 'painted_plaster_wall', 'building_surfaces'].map(async id => {
     const textures = await Promise.allSettled(['color', 'normal', 'arm'].map(async kind => {
       const texture = await loader.loadAsync(`${import.meta.env.BASE_URL}textures/city/${id}_${kind}_${size}.webp`);
       texture.name = `${id}/${kind}`;

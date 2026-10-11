@@ -213,6 +213,294 @@
           }
         }
       }
+    },
+    {
+      "id": "long_white_tiles",
+      "meters": 1.27,
+      "name": "Long White Tiles",
+      "authors": [
+        "Jenelle van Heerden",
+        "Sergej Majboroda"
+      ],
+      "source": "https://polyhaven.com/a/long_white_tiles",
+      "maps": {
+        "color": {
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/long_white_tiles/long_white_tiles_diff_1k.jpg",
+          "md5": "49f7e4c3a0afd9a8ca3df5ac75747353",
+          "tiers": {
+            "512": {
+              "file": "long_white_tiles_color_512.webp",
+              "bytes": 38378
+            },
+            "1024": {
+              "file": "long_white_tiles_color_1024.webp",
+              "bytes": 129482
+            }
+          }
+        },
+        "normal": {
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/long_white_tiles/long_white_tiles_nor_gl_1k.jpg",
+          "md5": "7837ef3d13258d6ee2bf9ee928d48152",
+          "tiers": {
+            "512": {
+              "file": "long_white_tiles_normal_512.webp",
+              "bytes": 70072
+            },
+            "1024": {
+              "file": "long_white_tiles_normal_1024.webp",
+              "bytes": 276646
+            }
+          }
+        },
+        "arm": {
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/long_white_tiles/long_white_tiles_arm_1k.jpg",
+          "md5": "cda98233f872f7c6047482daf200ee64",
+          "tiers": {
+            "512": {
+              "file": "long_white_tiles_arm_512.webp",
+              "bytes": 52784
+            },
+            "1024": {
+              "file": "long_white_tiles_arm_1024.webp",
+              "bytes": 206490
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "concrete_wall_006",
+      "meters": 2,
+      "name": "Concrete Wall 006",
+      "authors": [
+        "Dario Barresi",
+        "Charlotte Baglioni"
+      ],
+      "source": "https://polyhaven.com/a/concrete_wall_006",
+      "maps": {
+        "color": {
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/concrete_wall_006/concrete_wall_006_diff_1k.jpg",
+          "md5": "62ac61307a3321ecec26e1abd045f2ab",
+          "tiers": {
+            "512": {
+              "file": "concrete_wall_006_color_512.webp",
+              "bytes": 55646
+            },
+            "1024": {
+              "file": "concrete_wall_006_color_1024.webp",
+              "bytes": 259728
+            }
+          }
+        },
+        "normal": {
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/concrete_wall_006/concrete_wall_006_nor_gl_1k.jpg",
+          "md5": "337cf8d33598e1ecd036ef3727a4b36d",
+          "tiers": {
+            "512": {
+              "file": "concrete_wall_006_normal_512.webp",
+              "bytes": 159430
+            },
+            "1024": {
+              "file": "concrete_wall_006_normal_1024.webp",
+              "bytes": 685342
+            }
+          }
+        },
+        "arm": {
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/concrete_wall_006/concrete_wall_006_arm_1k.jpg",
+          "md5": "171452c48704f7fa7f55d5cbaf17c85c",
+          "tiers": {
+            "512": {
+              "file": "concrete_wall_006_arm_512.webp",
+              "bytes": 127798
+            },
+            "1024": {
+              "file": "concrete_wall_006_arm_1024.webp",
+              "bytes": 523944
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "wood_floor",
+      "meters": 1.7,
+      "name": "Wood Floor",
+      "authors": [
+        "Dimitrios Savva"
+      ],
+      "source": "https://polyhaven.com/a/wood_floor",
+      "maps": {
+        "color": {
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/wood_floor/wood_floor_diff_1k.jpg",
+          "md5": "b7e927d2bf2f8f103820ff3890c8407c",
+          "tiers": {
+            "512": {
+              "file": "wood_floor_color_512.webp",
+              "bytes": 51184
+            },
+            "1024": {
+              "file": "wood_floor_color_1024.webp",
+              "bytes": 234548
+            }
+          }
+        },
+        "normal": {
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/wood_floor/wood_floor_nor_gl_1k.jpg",
+          "md5": "620f174d2c09b579c5d02d37b2106668",
+          "tiers": {
+            "512": {
+              "file": "wood_floor_normal_512.webp",
+              "bytes": 17666
+            },
+            "1024": {
+              "file": "wood_floor_normal_1024.webp",
+              "bytes": 129938
+            }
+          }
+        },
+        "arm": {
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/wood_floor/wood_floor_arm_1k.jpg",
+          "md5": "02090ec0443778b85ba3df555236b755",
+          "tiers": {
+            "512": {
+              "file": "wood_floor_arm_512.webp",
+              "bytes": 34244
+            },
+            "1024": {
+              "file": "wood_floor_arm_1024.webp",
+              "bytes": 142752
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "terrazzo_tiles",
+      "meters": 2,
+      "name": "Terrazzo Tiles",
+      "authors": [
+        "Amal Kumar"
+      ],
+      "source": "https://polyhaven.com/a/terrazzo_tiles",
+      "maps": {
+        "color": {
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/terrazzo_tiles/terrazzo_tiles_diff_1k.jpg",
+          "md5": "12c27a579c2ed49de854b8a86e33647b",
+          "tiers": {
+            "512": {
+              "file": "terrazzo_tiles_color_512.webp",
+              "bytes": 117708
+            },
+            "1024": {
+              "file": "terrazzo_tiles_color_1024.webp",
+              "bytes": 486658
+            }
+          }
+        },
+        "normal": {
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/terrazzo_tiles/terrazzo_tiles_nor_gl_1k.jpg",
+          "md5": "a5f6d05f27db4151227535bdbc82c048",
+          "tiers": {
+            "512": {
+              "file": "terrazzo_tiles_normal_512.webp",
+              "bytes": 2070
+            },
+            "1024": {
+              "file": "terrazzo_tiles_normal_1024.webp",
+              "bytes": 8590
+            }
+          }
+        },
+        "arm": {
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/terrazzo_tiles/terrazzo_tiles_arm_1k.jpg",
+          "md5": "843e281304070827482b94ed7da24bc4",
+          "tiers": {
+            "512": {
+              "file": "terrazzo_tiles_arm_512.webp",
+              "bytes": 24262
+            },
+            "1024": {
+              "file": "terrazzo_tiles_arm_1024.webp",
+              "bytes": 145442
+            }
+          }
+        }
+      }
+    }
+  ],
+  "atlases": [
+    {
+      "id": "building_surfaces",
+      "columns": 2,
+      "rows": 2,
+      "gutter": 1,
+      "slots": [
+        {
+          "id": "long_white_tiles",
+          "index": 0,
+          "meters": 1.27
+        },
+        {
+          "id": "concrete_wall_006",
+          "index": 1,
+          "meters": 2
+        },
+        {
+          "id": "wood_floor",
+          "index": 2,
+          "meters": 1.7
+        },
+        {
+          "id": "terrazzo_tiles",
+          "index": 3,
+          "meters": 2
+        }
+      ],
+      "maps": {
+        "color": {
+          "tiers": {
+            "512": {
+              "file": "building_surfaces_color_512.webp",
+              "bytes": 73106,
+              "sha256": "d68e2a692a4d0d96d451b87e6730e8590a1d168dbaf470928dda9190f0f28946"
+            },
+            "1024": {
+              "file": "building_surfaces_color_1024.webp",
+              "bytes": 280448,
+              "sha256": "8c426be0ee09a0f7a432dd66bb59c140ff45e15dc9c501c40afbf3edffda8fb4"
+            }
+          }
+        },
+        "normal": {
+          "tiers": {
+            "512": {
+              "file": "building_surfaces_normal_512.webp",
+              "bytes": 53328,
+              "sha256": "4866c237ff971b6ce2ee1090b40f2cbf205a003825012f2fffa99d424f40c2fb"
+            },
+            "1024": {
+              "file": "building_surfaces_normal_1024.webp",
+              "bytes": 228090,
+              "sha256": "d2a2141594eeec0147ddaf4d3db720aa73891ff17a92d105d781f83b5dcc9402"
+            }
+          }
+        },
+        "arm": {
+          "tiers": {
+            "512": {
+              "file": "building_surfaces_arm_512.webp",
+              "bytes": 60614,
+              "sha256": "6188c65fd17551681c1ac6d1ec3d6566443929d351ca4d98a08b4aefd416d263"
+            },
+            "1024": {
+              "file": "building_surfaces_arm_1024.webp",
+              "bytes": 229222,
+              "sha256": "a0f34b12a8bba9190f385682f3778acf4fce364122a2125951d84cbbe89bc2bb"
+            }
+          }
+        }
+      }
     }
   ]
 }
