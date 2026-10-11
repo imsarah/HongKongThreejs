@@ -25,6 +25,8 @@ const BRAKE_HARD = 5;                 // m/s2: beyond this a car can't stop for 
 const PREDICT = 1.2;                  // s: obstacles are also tested where they will be
 const SWERVE = 0.9;                   // m: the most a car edges over round a partial block
 export const PASS_AFTER = 6;          // s blocked by a static obstacle before going round it
+const PASS_BATCH = 4;                // share a passing gap, then let the oncoming lane go
+const MERGE_ROOM = 22;               // m beyond a block reserved for the return to our lane
 const STARTLE = { closing: 6, cross: 1.5, every: 8 };   // startle beep: m/s, s, s
 export const SIGNAL_Z = CROSS_STREETS.find((c) => c.signal)?.z ?? -190;
 // Ocean Drive signal cycle (s): green, yellow, then red while the cross street runs
@@ -107,7 +109,7 @@ export function createTrafficSim({ count = 4, seed = 11, pickModel = () => ({ mo
     return {
       id: ++ids, dir, z, x: LANE_X[dir], v, v0: desired(follow ? prev : null), a: 0, len: m.len, model: m.model, classic: !!m.classic, color: m.color, taxi: !!m.taxi,
       braking: false, brakeT: 0, reason: null, blockedT: 0, stunT: 0, honk: 0, honked: false, holdT: 0, hidden: false, respawns: 0,
-      xOff: 0, xRate: 0, pass: null, startleT: 0, honkAnim: 0,
+      xOff: 0, xRate: 0, pass: null, returning: null, startleT: 0, honkAnim: 0,
       // (people.js / audio compatibility: the old audio car's fields)
       active: true, progress: 0.5, speed: v,
     };
@@ -125,10 +127,15 @@ export function createTrafficSim({ count = 4, seed = 11, pickModel = () => ({ mo
     for (const k of sizes) {
       for (let i = 0; i < k; i++) {
         const c = makeCar(dir, 0, 0, prev, i > 0);
-        c.v = c.v0;
+        // Followers start at the platoon's speed, with enough headway for that speed.
+        // Starting every follower at its higher desired speed makes the whole group brake
+        // as soon as the scene loads, before it has encountered any obstruction.
+        c.v = i > 0 ? prev.v : c.v0;
+        c.speed = c.v;
         p -= c.len / 2;
         c.z = dir * p;
-        p -= c.len / 2 + (i < k - 1 ? (2 + 2 * rnd()) * c.len : brk * (0.6 + 0.8 * rnd()));
+        const cruiseGap = (IDM.s0 + c.v * IDM.T) / Math.sqrt(1 - (c.v / (29 / 3.6)) ** IDM.delta);
+        p -= c.len / 2 + (i < k - 1 ? Math.max((2 + 2 * rnd()) * c.len, cruiseGap) : brk * (0.6 + 0.8 * rnd()));
         cars.push(c);
         prev = c;
       }
@@ -168,8 +175,14 @@ export function createTrafficSim({ count = 4, seed = 11, pickModel = () => ({ mo
     }
     // an oncoming car out in this lane (passing something): wait for it
     if (!c.pass) for (const o of cars) {
-      if (o.dir === c.dir || o.hidden || Math.abs(o.x - c.x) > 2 * LANE_HALF - 0.2) continue;
-      const d = ahead(o.z + o.dir * o.len / 2);
+      if (o.dir === c.dir || o.hidden) continue;
+      // Reserve the lane as soon as a pass starts, before the car swings across it.
+      const maneuver = o.pass ?? o.returning;
+      const entering = maneuver && Math.abs(LANE_X[-o.dir] - c.x) <= 2 * LANE_HALF - 0.2;
+      if (!entering && Math.abs(o.x - c.x) > 2 * LANE_HALF - 0.2) continue;
+      // Stop outside the merge area; following the approaching car's front alone leaves
+      // no room for it to steer home once its rear clears the parked car.
+      const d = Math.min(ahead(o.z + o.dir * o.len / 2), entering ? ahead(maneuver.far + o.dir * MERGE_ROOM) : Infinity);
       if (d > -0.5 && d < gap) { gap = Math.max(d, 0); vl = 0; s0 = IDM.s0Obst; reason = 'oncoming'; obst = null; }
     }
     // crosswalks: pedestrians have right of way
@@ -213,10 +226,33 @@ export function createTrafficSim({ count = 4, seed = 11, pickModel = () => ({ mo
     }
     return best;
   }
-  // may c start passing the static obstacle o? The other lane clear 60 m both ways
-  function canPass(c, o) {
-    for (const q of cars) if (q !== c && !q.hidden && q.dir !== c.dir && Math.abs(q.z - o.z) < 60) return false;
-    for (const q of cars) if (q !== c && !q.hidden && q.pass && Math.abs(q.z - o.z) < 20) return false;
+  const staticObstacle = (o) => Math.hypot(o.vx ?? 0, o.vz ?? 0) < 0.2 && !((o.v ?? 0) > 0.2);
+  // A queued follower can use its leader's reserved gap. Only a small batch joins so
+  // a long queue cannot keep the opposite direction waiting indefinitely.
+  function passAhead(c, obstacles) {
+    for (const q of cars) {
+      if (q === c || q.hidden || q.dir !== c.dir || !q.pass || q.pass.batch.joined >= PASS_BATCH) continue;
+      const gap = (q.z - c.z) * c.dir - (q.len + c.len) / 2;
+      if (gap < IDM.s0 || gap > 30) continue;
+      const o = obstacles.find((o) => staticObstacle(o) && Math.abs(o.z - q.pass.z) < 10
+        && Math.abs(o.x - LANE_X[c.dir]) < LANE_HALF + (o.r ?? 0.3)
+        && (o.z - c.z) * c.dir > 0 && (o.z - c.z) * c.dir < 35);
+      if (o) return { o, pass: q.pass };
+    }
+    return null;
+  }
+  // A first pass needs the other lane clear 60 m both ways. Followers may also join
+  // while oncoming cars are stopped beyond the space needed to merge back in.
+  function canPass(c, o, follow = null) {
+    for (const q of cars) {
+      if (q === c || q.hidden) continue;
+      if (q.dir !== c.dir && Math.abs(q.z - o.z) < 60) {
+        const beyond = (q.z - (follow?.far ?? o.z)) * c.dir - q.len / 2;
+        if (!follow || q.v >= 0.2 || beyond < c.len + 3.5 + 9 + IDM.s0Obst) return false;
+      }
+      const maneuver = q.pass ?? q.returning;
+      if (maneuver && Math.abs(q.z - o.z) < MERGE_ROOM && (!follow || q.dir !== c.dir || maneuver.batch !== follow.batch)) return false;
+    }
     return true;
   }
 
@@ -238,8 +274,13 @@ export function createTrafficSim({ count = 4, seed = 11, pickModel = () => ({ mo
     const far = !viewer || Math.hypot(viewer.x - LANE_X[dir], viewer.z - z) > 150;
     if (!far || (last && (last.z - z) * dir - last.len / 2 - 2.5 < gapNext[dir])) return false;
     const n = makeCar(dir, z, 0, last, gapNext[dir] < 5 * 4.8);
+    const gap = last ? (last.z - z) * dir - (last.len + n.len) / 2 : Infinity;
+    // Rejoining cars also match the lane's pace; a small entry gap needs a lower speed
+    // rather than spawning a fast follower that immediately slams on the brakes.
+    const v = Math.max(0, Math.min(n.v0 * 0.8, last?.v ?? Infinity,
+      (gap * Math.sqrt(1 - 0.8 ** IDM.delta) - IDM.s0) / IDM.T));
     gapNext[dir] = nextGap(rnd, n.len);
-    Object.assign(c, { ...n, id: c.id, respawns: c.respawns + 1, v: n.v0 * 0.8, hidden: false });
+    Object.assign(c, { ...n, id: c.id, respawns: c.respawns + 1, v, speed: v, hidden: false });
     return true;
   }
 
@@ -247,6 +288,13 @@ export function createTrafficSim({ count = 4, seed = 11, pickModel = () => ({ mo
     cars,
     get time() { return t; },
     get signal() { return signalState(t); },
+    // Saved vehicles are restored after traffic is built. Recycle any initial slot that
+    // would occupy a restored vehicle, before the first frame; the saved car stays put.
+    prepare(obstacles = []) {
+      if (t !== 0) return;
+      for (const c of cars) if (obstacles.some((o) => Math.abs(o.x - c.x) < LANE_HALF + (o.r ?? 0.3)
+        && Math.abs(o.z - c.z) < c.len / 2 + (o.r ?? 0.3) + IDM.s0Obst)) api.detach(c);
+    },
     // input: { peds: [{x, z}], obstacles: [{x, z, r, v?}], viewer: {x, z} }
     update(dt, { peds = [], obstacles = [], viewer = null } = {}) {
       dt = Math.min(dt, 0.1);
@@ -277,15 +325,25 @@ export function createTrafficSim({ count = 4, seed = 11, pickModel = () => ({ mo
           }
           // round a static obstacle it has waited behind: out into the other lane once that is
           // clear 60 m both ways, and back in past it
-          if (!c.pass && L.obst && Math.hypot(L.obst.vx ?? 0, L.obst.vz ?? 0) < 0.2 && !((L.obst.v ?? 0) > 0.2) && c.blockedT > PASS_AFTER && canPass(c, L.obst)) {
-            c.pass = { z: L.obst.z, far: L.obst.z, t: 0 };
-            c.passes = (c.passes ?? 0) + 1;
+          if (!c.pass && !c.returning) {
+            const follow = passAhead(c, obstacles);
+            const join = follow && canPass(c, follow.o, follow.pass);
+            const start = !join && L.obst && staticObstacle(L.obst) && c.blockedT > PASS_AFTER && canPass(c, L.obst);
+            if (join || start) {
+              const o = join ? follow.o : L.obst;
+              const batch = join ? follow.pass.batch : { joined: 0 };
+              batch.joined++;
+              c.pass = { z: join ? follow.pass.z : o.z, far: join ? follow.pass.far : o.z, t: 0, batch };
+              c.passes = (c.passes ?? 0) + 1;
+            }
           }
           if (c.pass) {
             const p = c.pass;
             p.t += h;
             for (const o of obstacles) if (Math.abs(o.x - LANE_X[c.dir]) < LANE_HALF + (o.r ?? 0.3) + 0.9 && Math.abs(o.z - p.z) < 10 && (o.z - p.far) * c.dir > 0) p.far = o.z;
-            if ((c.z - c.dir * c.len / 2 - p.far) * c.dir > 3.5 || p.t > 30) c.pass = null;
+            // A signal or pedestrian can hold a pass for longer than 30 seconds. Keep
+            // the lane reserved until the rear clears: a timer must not steer into the block.
+            if ((c.z - c.dir * c.len / 2 - p.far) * c.dir > 3.5) { c.returning = p; c.pass = null; }
           }
           const want = swerveTarget(c, obstacles);
           const rate = (c.pass || Math.abs(want) < Math.abs(c.xOff) - 0.01 && Math.abs(c.xOff) > 1.5 ? 0.9 + 0.2 * c.v : 0.35 + 0.25 * c.v) * h;
@@ -293,6 +351,7 @@ export function createTrafficSim({ count = 4, seed = 11, pickModel = () => ({ mo
           c.xOff += dx;
           c.xRate = dx / h;
           c.x = LANE_X[c.dir] + c.xOff;
+          if (c.returning && Math.abs(c.xOff) < 0.05) c.returning = null;
           let acc = idm(c, L);
           acc = Math.max(-7, Math.min(IDM.a, acc));
           c.v = Math.max(0, c.v + acc * h);
@@ -324,7 +383,7 @@ export function createTrafficSim({ count = 4, seed = 11, pickModel = () => ({ mo
     // later with a new model, as after running off the end
     detach(c) {
       if (!c || c.hidden) return false;
-      Object.assign(c, { hidden: true, holdT: 0, v: 0, a: 0, pass: null, xOff: 0, active: false, speed: 0 });
+      Object.assign(c, { hidden: true, holdT: 0, v: 0, a: 0, pass: null, returning: null, xOff: 0, active: false, speed: 0 });
       return true;
     },
   };

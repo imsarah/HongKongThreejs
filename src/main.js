@@ -279,6 +279,7 @@ function trafficObstacles() {
   exitDrivers.obstacles(out);
   return out;
 }
+traffic.sim?.prepare(trafficObstacles());
 
 // footstep surface: the street is all pavement and asphalt
 function stepSurface(x, z, feetY) {

@@ -55,6 +55,9 @@ node tools/car-ride-test.mjs
 node tools/any-car-test.mjs
 node tools/car-cockpit-test.mjs
 node tools/car-glass-mobile-test.mjs
+node tools/traffic-sim-test.mjs
+node tools/traffic-visual-test.mjs
+node tools/traffic-startup-test.mjs
 ```
 
 These check the right-hand cockpit anchors in all eight car models, door sides at different
@@ -64,6 +67,11 @@ The browser checks need the dev server running and Playwright Chromium installed
 through full-lock turns in all eight cars, compare the inside view with and without windshield
 glass, and exercise iPhone SE, iPhone 13, Pixel 7 and iPad layouts in both orientations.
 Screenshots are saved under `shots/cockpit/` and `shots/glass-mobile/`.
+The Node traffic checks cover startup flow across all three quality tiers, restored-car
+overlaps, queued passing in both directions at different frame rates, oncoming right of
+way, pedestrian and signal stops, and continuous flow with no vehicle overlaps.
+The browser startup check loads desktop and mobile scenes and reloads with a saved car
+inside a traffic spawn, checking that the saved pose survives and traffic flows around it.
 
 Phone and tablet views keep enough horizontal field of view in portrait, with a driving HUD,
 readable touch buttons of at least 44 px, and a radio card that fits around the minimap.
@@ -231,7 +239,12 @@ Mixamo crowd and open-world driving ([CHANGELOG.md](CHANGELOG.md) has its full h
   keep left: lane directions, stop lines, signal placement, cross-street stop signs and
   parked-car headings change together. About a third of the moving cars are red taxis with
   illuminated TAXI roof signs. Cars receive invented Hong Kong registration plates, white
-  at the front and yellow at the rear, and the speedometer defaults to km/h. The lifeguard
+  at the front and yellow at the rear, and the speedometer defaults to km/h. Starting groups
+  share a cruising speed and safe headway, and cars rejoining the road match the lane's pace
+  to avoid braking waves. A saved car stays where it was left; traffic slots overlapping it
+  on reload re-enter from the road ends. Queued cars pass a stationary obstruction in batches
+  of up to four, reserving space to merge back before giving oncoming traffic its turn.
+  Pedestrian crossings and traffic signals still take priority. The lifeguard
   ATV is removed and the bike is placed on the east sidewalk. Ocean Drive's car models are
   rebuilt for right-hand drive: cockpit controls, seated characters, pedal animation, camera
   anchors and driver-door interactions move together. The modern cars' windscreen borders

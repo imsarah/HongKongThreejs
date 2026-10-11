@@ -2,7 +2,7 @@
 // crosswalk stops for pedestrians, the 11 ST signal, stopping short of a player obstacle
 // (and honking once), and a continuous flow with no overlaps.
 // Usage: node tools/traffic-sim-test.mjs
-import { createTrafficSim, createPicker, CROSSWALKS, stopLine, signalLine, signalState, SIGNAL, SIGNAL_CYCLE, LANE_X, END_Z } from '../src/world/traffic-sim.js';
+import { createTrafficSim, createPicker, CROSSWALKS, stopLine, signalLine, signalState, SIGNAL, SIGNAL_CYCLE, LANE_X, LANE_HALF, END_Z } from '../src/world/traffic-sim.js';
 import { CROSSWALK_Z } from '../src/world/layout.js';
 
 const results = [];
@@ -10,6 +10,37 @@ const check = (name, ok, info) => { results.push(ok); console.log(`${ok ? 'PASS'
 const DT = 1 / 60;
 const front = (c) => c.z + c.dir * c.len / 2, rear = (c) => c.z - c.dir * c.len / 2;
 const pick = () => ({ model: 'sedan', len: 4.8 });
+
+// Restoring a saved car must not put a moving traffic car inside it on the first frame.
+{
+  const sim = createTrafficSim({ count: 30, seed: 11, pickModel: pick });
+  const c = sim.cars.find((c) => c.dir === -1 && Math.abs(c.z) < 200);
+  const parked = [-1.9, 0, 1.9].map((dz) => ({ x: c.x, z: c.z + dz, r: 0.95 }));
+  const original = parked.map((o) => ({ ...o }));
+  sim.prepare(parked);
+  check('startup: recycle traffic overlapping the restored car, preserve its saved pose', c.hidden && JSON.stringify(parked) === JSON.stringify(original), { hidden: c.hidden });
+  sim.update(DT, { obstacles: parked, viewer: { x: -26, z: 40 } });
+  const hit = sim.cars.some((c) => !c.hidden && parked.some((o) => Math.abs(c.x - o.x) < 1.85 && Math.abs(c.z - o.z) < c.len / 2 + o.r));
+  check('startup: restored-car overlap is gone on the first frame', !hit && sim.cars.length === 30, { hit, cars: sim.cars.length });
+}
+
+// Startup and re-entry: every quality tier should flow without an immediate braking wave.
+for (const count of [8, 18, 30]) {
+  let braking = 0, stopped = 0, overlaps = 0;
+  for (const seed of [5, 11, 21]) {
+    const sim = createTrafficSim({ count, seed, pickModel: (r) => ({ model: 'car', len: 4.2 + r() * 1.6 }) });
+    for (let t = 0; t < 20; t += DT) {
+      sim.update(DT, { viewer: { x: -26, z: 40 } });
+      for (const c of sim.cars) {
+        if (c.hidden) continue;
+        if (c.reason === 'car' && c.a < -0.35) braking++;
+        if (c.v < 0.2) stopped++;
+        for (const q of sim.cars) if (q.id > c.id && !q.hidden && q.dir === c.dir && Math.abs(q.z - c.z) < (q.len + c.len) / 2) overlaps++;
+      }
+    }
+  }
+  check(`${count} cars: startup and re-entry flow without braking waves`, braking === 0 && stopped === 0 && overlaps === 0, { braking, stopped, overlaps });
+}
 
 // 1. following: a slow leader, the follower settles at a safe gap and never closes it
 {
@@ -104,9 +135,13 @@ const pick = () => ({ model: 'sedan', len: 4.8 });
   const [c] = sim.cars;
   Object.assign(c, { dir: 1, x: LANE_X[1], z: 100, v: 8, v0: 8 });
   const me = { x: LANE_X[1] + 0.6, z: 140, r: 0.3 };
-  let minClear = Infinity;
-  for (let t = 0; t < 16; t += DT) { sim.update(DT, { obstacles: [me] }); minClear = Math.min(minClear, me.z - me.r - front(c)); }
-  check('car stops short of the player in the lane', c.v < 0.05 && minClear > 0.5 && minClear < 4, { clear: +minClear.toFixed(2) });
+  let minClear = Infinity, stopped = false;
+  for (let t = 0; t < 16; t += DT) {
+    sim.update(DT, { obstacles: [me] });
+    if (Math.abs(me.x - c.x) < LANE_HALF + me.r) minClear = Math.min(minClear, me.z - me.r - front(c));
+    if (!c.pass && c.v < 0.05 && c.reason === 'obstacle') stopped = true;
+  }
+  check('car stops short of the player before going round them', stopped && minClear > 0.5 && minClear < 4, { stopped, clear: +minClear.toFixed(2) });
   check('honks once when blocked for more than 4 s', c.honk === 1, { honk: c.honk, blockedT: +c.blockedT.toFixed(1) });
   for (let t = 0; t < 10; t += DT) sim.update(DT, { obstacles: [me] });
   check('...and only once', c.honk === 1, { honk: c.honk });
@@ -129,6 +164,53 @@ const pick = () => ({ model: 'sedan', len: 4.8 });
   Object.assign(c3, { dir: 1, x: LANE_X[1], z: 100, v: 8, v0: 8 });
   for (let t = 0; t < 10; t += DT) sim3.update(DT, { obstacles: [{ x: LANE_X[-1] + 0.3, z: 140, r: 0.3 }] });
   check('an obstacle in the other lane does not stop it', c3.z > 150, { z: +c3.z.toFixed(1) });
+}
+
+// A restored car in a travel lane: queued cars share the safe passing gap, reserve enough
+// space to merge home, and give oncoming traffic a turn after four cars. Check both lanes
+// at desktop and low frame rates, including physical overlap throughout the manoeuvre.
+for (const dir of [-1, 1]) for (const dt of [DT, 0.1]) {
+  const sim = createTrafficSim({ count: 7, seed: 33, pickModel: pick });
+  const queue = sim.cars.slice(0, 5), oncoming = sim.cars[5];
+  queue.forEach((c, i) => Object.assign(c, { dir, x: LANE_X[dir], z: 100 - dir * (60 + i * 25), v: 8, v0: 8 }));
+  Object.assign(oncoming, { dir: -dir, x: LANE_X[-dir], z: 100 + dir * 200, v: 7, v0: 7 });
+  Object.assign(sim.cars[6], { dir: -dir, x: LANE_X[-dir], z: 100 + dir * 230, v: 7, v0: 7 });
+  const obstacles = [-1.9, -0.95, 0, 0.95, 1.9].map((dz) => ({ x: LANE_X[dir], z: 100 + dz, r: 0.95 }));
+  const passed = new Map();
+  let hits = 0, oncomingAt = null, stoppedT = 0, maxStopped = 0;
+  for (let t = 0; t < 80; t += dt) {
+    sim.update(dt, { obstacles });
+    for (const c of queue) if (!passed.has(c) && (rear(c) - 100) * dir > 6) passed.set(c, t);
+    if (oncomingAt === null && (oncoming.z - 100) * -dir > 6) oncomingAt = t;
+    stoppedT = oncoming.v < 0.2 ? stoppedT + dt : 0;
+    maxStopped = Math.max(maxStopped, stoppedT);
+    for (const c of sim.cars) {
+      if (c.hidden) continue;
+      for (const q of sim.cars) if (q.id > c.id && !q.hidden && Math.abs(q.x - c.x) < 1.85 && Math.abs(q.z - c.z) < (q.len + c.len) / 2) hits++;
+      for (const o of obstacles) if (Math.abs(o.x - c.x) < 1.85 && Math.abs(o.z - c.z) < c.len / 2 + o.r - 0.3) hits++;
+    }
+  }
+  const times = queue.map((c) => passed.get(c));
+  check(`queued passing dir ${dir}, dt ${dt.toFixed(3)}: four cars clear together without collisions`, times.slice(0, 4).every((t) => t < 40) && times[3] - times[0] < 12 && hits === 0, { times: times.map((t) => t?.toFixed(1)), hits });
+  check(`queued passing dir ${dir}, dt ${dt.toFixed(3)}: oncoming traffic gets its turn`, oncomingAt > times[3] && oncomingAt < times[4] && times[4] < 80 && maxStopped > 1 && maxStopped < 15, { oncomingAt: oncomingAt?.toFixed(1), maxStopped: maxStopped.toFixed(1) });
+}
+
+// Pedestrians may hold a passing car alongside the obstruction for more than 30 seconds.
+// Its lane reservation must survive that wait, rather than steering back into the block.
+{
+  const sim = createTrafficSim({ count: 1, seed: 33, pickModel: pick });
+  const c = sim.cars[0];
+  Object.assign(c, { dir: -1, x: LANE_X[-1], z: 40, v: 8, v0: 8 });
+  const obstacles = [-1.9, 0, 1.9].map((dz) => ({ x: LANE_X[-1], z: -3 + dz, r: 0.95 }));
+  let started = null, waited = 0, hits = 0;
+  for (let t = 0; t < 90; t += DT) {
+    if (started === null && c.pass) started = t;
+    const peds = started !== null && t - started < 45 ? [{ x: -18, z: CROSSWALK_Z }] : [];
+    sim.update(DT, { obstacles, peds });
+    if (c.pass && c.v < 0.2 && c.reason === 'crosswalk') waited += DT;
+    for (const o of obstacles) if (Math.abs(c.x - o.x) < 1.85 && Math.abs(c.z - o.z) < c.len / 2 + o.r - 0.3) hits++;
+  }
+  check('a long pedestrian stop preserves the passing lane and then clears safely', waited > 30 && hits === 0 && c.z < -60 && Math.abs(c.xOff) < 0.05, { waited: waited.toFixed(1), hits, z: c.z.toFixed(1), off: c.xOff.toFixed(2) });
 }
 
 // 4b. reacting to the player: predictive braking, startle beep, swerve, passing a stopped car
