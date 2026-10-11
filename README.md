@@ -1,52 +1,50 @@
-# Ocean Drive
+# HongKongThreejs · Causeway Bay 銅鑼灣
 
-A first-person walk along Ocean Drive in Miami Beach at sunrise, built in Three.js. The sun is a
-hand's width above the Atlantic, the pastel Art Deco hotels are lit gold, and the palms throw
-shadows the length of the street. You can walk the sidewalk past the cafés, cross to the park,
-climb a lifeguard tower and go down to the water, where the swash runs in around your feet. Or
-get into any car on the street, a parked one or a stopped one in the traffic, and drive it
-anywhere: down the drive, over the park lawn, down the seawall ramps onto the sand and into the
-surf. It is a sandbox, not a crime game: no weapons, no fighting, and a borrowed car's driver
-gets out and waves.
+The Hong Kong implementation is on the [`claude/modest-fermi-witbgu` branch](https://github.com/imsarah/HongKongThreejs/tree/claude/modest-fermi-witbgu). The `main` branch currently contains the original Ocean Drive code and this project overview.
 
-The hotels, the palms, the sand, the ocean, the sky, the signs and every sound are generated in
-code at load time. The only files the scene loads are the cars, modelled in Blender for this
-project, the people and their animations from Mixamo, and two Poly Haven CC0 normal maps for the
-car interiors (see [CHANGELOG.md](CHANGELOG.md) for the provenance). The hotels are invented:
-there is no real name or brand anywhere in the scene.
+A walk, a run and a drive down a Causeway Bay street in Hong Kong on a late afternoon, built in
+Three.js and generated in code. Tong lau walk-ups with balconies and burglar grilles, slim
+residential towers with bay windows, older ribbon-window commercial blocks and glass office
+towers line both sides of the road. Their ground floors are shops under concrete canopies, with
+lit fascia signs in Chinese and English, and vertical neon signs hang out over the sidewalks.
+Red taxis and the rest of the traffic keep left, the crossings say 望右 LOOK RIGHT, and the
+crowd walks both sidewalks. You can walk it in first person, switch to third person and run,
+or take any car on the street and drive it.
 
-![Ocean Drive, Miami Beach at sunrise](public/og-image.jpg)
+**This project is built on top of [Ocean Drive](https://github.com/StarKnightt/ocean-drive)
+by StarKnightt, then completely changed.** Ocean Drive was a first-person sunrise walk along
+Miami Beach's Art Deco hotels, palms, beach and ocean. The engine underneath it is kept: the
+renderer and post chain, the sky and shadow system, the walker, the vehicle and traffic
+simulations, the Blender-built cars, the Mixamo crowd and the synthesized audio. The scene on
+top of it is new: the city, the street, the buildings, the signs, the markings, the traffic
+rules, the light and the controls. Nothing of Miami is left on screen. See
+[Where it came from](#where-it-came-from) for what was kept and what was replaced.
 
-**Walk it: https://starknightt.github.io/ocean-drive/**
-
-**The brief it was built from: [PROMPT.md](PROMPT.md).** One page, unedited, with a list at the
-end of where the scene went beyond it.
-
-It runs best on a desktop GPU in a Chromium-based browser, and it was built and measured on an RTX
-4060. It also runs on laptops and phones, on a lower quality tier.
+The buildings, signs, street and every sound are generated in code at load time. The only
+files the scene loads are Ocean Drive's car models, built in Blender for that project, the
+Mixamo people and their animations, Poly Haven CC0 texture scans for the road, paving and
+painted plaster, a Poly Haven HDRI sky, and two Poly Haven normal maps for the car interiors. The city scans include
+albedo, normal and packed occlusion/roughness maps, stored locally as WebP at 1K (high/medium)
+and 512 px (low). [Sources and asset credits](https://github.com/imsarah/HongKongThreejs/blob/claude/modest-fermi-witbgu/public/textures/city/README.md).
+The HDRI adds a restrained contribution to ambient lighting and reflections; the visible sky
+and haze retain the original afternoon treatment. Local 4K/2K/1K files are used
+for high/medium/low quality. [HDRI source and lighting notes](https://github.com/imsarah/HongKongThreejs/blob/claude/modest-fermi-witbgu/public/environments/README.md).
+The shop and sign names are invented: there is no real business, brand or logo anywhere in the
+scene. The street names are real Causeway Bay streets.
 
 ## Running it locally
 
 ```
-git clone https://github.com/StarKnightt/ocean-drive.git
-cd ocean-drive
+git clone --branch claude/modest-fermi-witbgu https://github.com/imsarah/HongKongThreejs.git
+cd HongKongThreejs
 npm install
 npm run dev        # http://localhost:5173
 npm run build      # production build into dist/
 ```
 
 The only runtime dependency is `three` (0.186). The build uses a relative base, so `dist/` works
-from any sub-path; every push to `main` deploys it to GitHub Pages through
-`.github/workflows/deploy.yml`.
-
-The Playwright scripts in `tools/` need the dev server running: `shots.mjs` captures the five
-fixed critic cameras, `walk-test.mjs` walks the route from the sidewalk to the water,
-`ride-test.mjs` and `vehicle-sim-test.mjs` check the bike, the ATV and the convertible (`car-ride-test.mjs`
-runs the convertible's enter / drive / exit flow in Node; `traffic-sim-test.mjs` and
-`traffic-visual-test.mjs` check the traffic in Node), and `mobile-test.mjs` runs
-the touch controls on an emulated phone.
-
-![The hotel fronts from the park: MARISOL, ORCHIDEA and the convertible at the curb](media/01-hotel-fronts.jpg)
+from any sub-path. It runs best on a desktop GPU in a Chromium-based browser, and also runs on
+laptops and phones on a lower quality tier.
 
 ## Controls
 
@@ -54,194 +52,163 @@ the touch controls on an emulated phone.
 |---|---|---|
 | Start | Click (locks the pointer; the sound starts on the same click) | Tap (goes fullscreen where the browser allows it) |
 | Look | Mouse | Drag anywhere off the joystick |
-| Walk | W A S D, Shift to walk faster | Left-thumb joystick |
+| Walk | W A S D | Left-thumb joystick |
+| Run | Hold Shift, or turn Caps Lock on to keep running | Joystick at full tilt |
 | Jump | Space | Jump button |
-| Get in / out | E (or F): the beach cruiser, the lifeguard ATV, the convertible, any parked car, or a stopped traffic car at its driver's door (the driver gets out and waves) | Ride / Enter button |
-| Throttle, brake / reverse, steer | W S A D, Shift for a little more throttle | Joystick |
+| First person / third person (on foot) | V (or C) | Camera button |
+| Get in / out | E (or F): the bike, the convertible, any parked car, or a stopped traffic car at its driver's door (the driver gets out and waves) | Ride / Enter button |
+| Throttle, brake / reverse, steer | W S A D | Joystick |
 | Handbrake | Space: held with the wheel turned, the tail steps out | Jump button, held |
-| Driver's view / chase camera | C (or V) | Camera button |
+| Driver's view / chase camera (in a car) | C (or V) | Camera button |
 | Horn | H | |
-| Car radio: Off, Bossa at Dawn, Sunrise Synth, Clave Café | Q | Radio button |
+| Car radio | Q | Radio button |
 | Minimap | N hides / shows it, Shift+N north up / heading up | |
-| Fast travel: 1 beach, 2 your car, 3 hotel sidewalk, 4 promenade, 5 11 ST, 6 café, 7 convertible, 8 ATV, 9 tower lookout, 0 start (2, 3, 5 and 7 bring the car you are driving) | 1–0 | Pin button, top right |
-| Back to the nearest road (stuck, bogged in the sand, stalled in the surf) | R (or Backspace) | |
+| Back to the nearest road (stuck) | R (or Backspace) | |
 | Mute | M | Mute button |
 | Release the pointer | Esc | |
 
-The key hints show small at the bottom left for a few seconds after you get in, then fade.
-
 The last car you got out of stays where you left it, across reloads (`localStorage`
-`ocean-drive.car`); the minimap marks it with a small lozenge.
+`ocean-drive.car`, the key kept from Ocean Drive); the minimap marks it.
 
 | URL option | Effect |
 |---|---|
 | `quality=low\|medium\|high` | Pins a quality tier instead of detecting one |
 | `dynres=0` | Turns dynamic resolution off |
+| `gpuguard=0` | Turns off the GPU-time guard that lowers resolution and shadows on a struggling GPU |
 | `hud=1` | Shows the frame-rate readout |
 | `nofs=1` | Does not go fullscreen on the starting tap |
-| `openworld=0` | The road-only rules: cars stay on the road, the ATV on the beach, no parked car to enter |
-| `units=kmh` | The driving speedometer in km/h |
+| `openworld=0` | The road-only rules: cars stay on the road, no parked car to enter |
+| `units=mph` | The driving speedometer in mph (km/h by default) |
 | `prof` | Per-section main-thread timings in `window.__prof()` |
-
-![From the top of a lifeguard tower, looking back at the hotels](media/02-from-the-tower.jpg)
 
 ## What is in it
 
-- About 22,400 lines of hand-written JavaScript across 57 files in `src/`.
-- A district 680 m long, from z −340 to +340, with six cross streets, the park, the promenade
-  and the beach. The brief asked for one block.
-- About forty procedural Art Deco hotels: curved bays, eyebrow slabs over the windows, porthole
-  windows, pylon signs, stepped parapets, recessed windows that reflect the sky, café patios with
-  umbrellas and awnings, and weathering streaked down the stucco. The names are invented:
-  MARISOL, ORCHIDEA, BELLA MAR, CORALINE, SEAGROVE and so on.
-- About 160 palms of three species, coconut, royal and sabal, with fronds that sway in the wind
-  and leaflet shadows cut from the same alpha as the leaves.
-- A weathered street with lane markings, crosswalks, Deco lamps and signs, parked cars and a
-  1950s convertible at the curb.
-- A beach with footprints pressed into the sand, a wrack line of seaweed, a wet-sand sheen,
-  breakers, lace foam and swash that washes around your feet. Three lifeguard towers, all
-  climbable.
-- An ocean with a glitter path under the sun and turquoise shallows.
-- People: a crowd of Mixamo characters walking, jogging and skating the sidewalks and the
-  promenade, sitting at the cafés and on the benches, a beach walker on the wet sand and a
-  seated driver in every traffic car. They step out of a car's way and turn their heads to one
-  coming at them.
-- Birds: pelicans in a line over the water, gulls that flee when you walk at them, sanderlings
-  chasing the surf, grackles on the patios, a frigatebird and cormorants.
-- Cars modelled in Blender (`blender/`): the two-tone 1950s convertible and seven modern bodies,
-  with cockpits you can sit in. A beach cruiser to ride, a lifeguard ATV and the convertible to
-  drive (V8 synthesized live), and every other car too.
-- Traffic: a few cars cruising the drive at 20–30 km/h, keeping their distance, stopping for
-  anyone on a crosswalk, for the 11 ST signal (which cycles) and for you in the lane, with
-  brake lights, positional engines and a horn when blocked. They brake for where you will be,
-  beep when you cut in, edge round things at the lane edge and pass a car left standing in the
-  lane. None in the `?shot` harness frames.
-- Open world: any parked or stopped traffic car to take (its driver swings the door open, gets
-  out and walks off), the park lawn, the seawall ramps, soft sand you can bog in and surf that
-  can drown the engine, with the car pressed into the sand and the water, gold-backlit spray,
-  thrown sand, ruts and patchy skid marks. Sidewalk bins and news boxes you can knock over,
-  road-closed barricades and cones at the ends, dents on the modern cars, parked classics in the
-  curb rows, the last car you left saved across reloads, a minimap and a three-station
-  generative car radio.
+- **The street.** A two-lane road with traffic keeping left, between two continuous rows of
+  buildings, with metered parking bays on the west kerb. Six side streets meet it from the west,
+  named after real Causeway Bay streets (波斯富街 Percival Street, 利園山道 Lee Garden Road,
+  白沙道 Pak Sha Road, 啟超道 Kai Chiu Road, 恩平道 Yun Ping Road, 糖街 Sugar Street). The main road
+  is signed 軒尼詩道 Hennessy Road. The layout is not yet the real map of Causeway Bay; see
+  [Not done yet](#not-done-yet).
+- **Buildings, generated per lot.** Tong lau, residential towers, older commercial blocks and
+  glass office towers, each with its own height, colour, wall finish (small mosaic tiles,
+  painted render or large tiles), window style and seed. The windows are drawn by the facade
+  shader:
+  - each has a room behind it (interior mapping: back wall, side walls, floor and ceiling,
+    furniture, curtains and a ceiling tube in the lit rooms);
+  - the glass sits recessed behind the wall, so the reveals show as you move;
+  - the glass reflects the sky;
+  - there are sills with drip stains, and burglar grilles on the lower tong lau floors;
+  - far away, the window pattern fades to its average colour, so it doesn't shimmer.
+- **Building geometry.** Balconies with railings on the tong lau, bay windows on the towers,
+  air conditioners under the windows, laundry poles, round water tanks, rooftop huts and
+  parapets, and rooftop billboards.
+- **Shops.** Every ground floor is a row of shops under a concrete canopy with tube lights.
+  Each shop has a lit fascia sign in Chinese and English and glazing into a deep interior with
+  shelves of goods. Here and there a roller shutter is down.
+- **Signs.** Vertical neon and lightbox signs hang out over the sidewalks (酒家, 押, 麻雀, 藥房, 金行,
+  冰室, 找換, 牙科醫生 and so on), and boards and billboards sit on the facades and rooftops. All are
+  drawn into one canvas atlas at load time.
+- **Street furniture and markings, Hong Kong style.**
+  - double white centre lines, double yellow no-stopping lines and zebra crossings;
+  - 望右 LOOK RIGHT painted at every crossing;
+  - galvanised guard railings along the kerbs, tall street lamps lit at dusk;
+  - orange litter bins, red pillar hydrants, black traffic-light housings;
+  - white street-name plates (Chinese over English), 停 STOP signs, metered-parking and
+    pedestrian-crossing signs.
+- **Traffic that keeps left.** Cars cruise at 20–30 km/h, keep their distance and stop for
+  pedestrians, for the Lee Garden Road signal and for you. About a third of them are red taxis
+  with a lit TAXI roof sign. Every car carries a Hong Kong plate: black on yellow at the rear,
+  black on white at the front (the numbers are invented).
+- **People.** Mixamo characters walk and hurry along both sidewalks, stand on the phone outside
+  the shops, and sit in every traffic car. They step out of a car's way.
+- **You.** First person, or third person (V): your character turns to face where you're going
+  and blends from idle to walk to run with its speed. The camera sits over the right shoulder
+  and pulls in when a building is in the way. Shift or Caps Lock runs.
+- **Open world.** Ocean Drive's open-world driving carries over:
+  - any parked or stopped traffic car can be taken, and its driver gets out and walks off;
+  - knockable bins, and road-closed barricades and cones at the ends;
+  - dents on the modern cars;
+  - a minimap and a generative car radio.
+- **Light.** A late-afternoon sun from the south-west, low enough to throw the towers' shadows
+  across the street. The sky fill is raised for the canyon of towers, and the shadow box
+  reaches the tower tops.
 
-![The waterline: glitter path, breakers and the wrack line](media/03-waterline.jpg)
+## Where it came from
 
-## How it works
+This repository started as a copy of [Ocean Drive](https://github.com/StarKnightt/ocean-drive)
+(MIT, © 2026 Prasenjit / StarKnightt). Ocean Drive was a first-person walk along Ocean Drive in
+Miami Beach at sunrise. It had about forty pastel Art Deco hotels, 160 palms, a park and
+promenade, a beach with footprints, swash and lifeguard towers, an ocean with a glitter path,
+pelicans and gulls, and a bossa nova drifting from a hotel patio. It was built overnight by AI
+agents from the brief in [PROMPT.md](https://github.com/imsarah/HongKongThreejs/blob/claude/modest-fermi-witbgu/PROMPT.md), then extended with Blender cars, traffic, a
+Mixamo crowd and open-world driving ([CHANGELOG.md](https://github.com/imsarah/HongKongThreejs/blob/claude/modest-fermi-witbgu/CHANGELOG.md) has its full history).
 
-### Sky and light
+**Kept from Ocean Drive (the engine):**
+- the renderer, post chain, quality tiers, dynamic resolution and GPU guard;
+- the sky model, haze and contact-hardening sun shadows;
+- the walker and touch controls, and the vehicle simulation and chase camera;
+- the traffic simulation (the Intelligent Driver Model), the Blender car models and their
+  materials;
+- the Mixamo crowd system, the synthesized audio engine, the minimap, the HUD and the radio.
 
-The sky is a physically inspired scattering model evaluated for a sun a few degrees above the
-horizon, with a deck of clouds whose sun-facing edges go gold and whose undersides go violet. The
-sun is warm and the shadows are cool, lit by the same sky. Aerial haze thickens with distance, so
-the far end of the street goes soft and warm the way a humid Miami morning does.
+**Replaced or new for Causeway Bay:**
+- **City:**
+  - the beach, ocean, surf, park, promenade and palms are gone, and the east side is a second
+    row of buildings (`world/ground.js`);
+  - the hotels are replaced by the generated Hong Kong frontage (`world/hk-buildings.js`).
+- **Street:**
+  - the street furniture, markings and signs are rebuilt to Hong Kong conventions
+    (`world/street.js`);
+  - traffic keeps left, parked cars face the way the near lane runs, and there are red taxis
+    and Hong Kong plates (`world/hk-plates.js`);
+  - the lifeguard ATV is gone.
+- **Player:**
+  - the third-person body (`player/avatar.js`) and running are new.
+- **Light and text:**
+  - the sun moves from a sunrise over the Atlantic to a late-afternoon sun in the south-west;
+  - the titles, the loading screen and these docs are rewritten.
 
-Shadows are contact-hardening: sharp where a palm trunk meets the pavement, soft at the far end of
-its long shadow. The shadow camera follows the player through the whole district, snapped to
-whole shadow-map texels, so the edges do not shimmer as you walk.
+The original Ocean Drive brief is kept in [PROMPT.md](https://github.com/imsarah/HongKongThreejs/blob/claude/modest-fermi-witbgu/PROMPT.md) for the record, with the Hong
+Kong brief after it.
 
-### Hotels, palms and the street
+## Not done yet
 
-Every hotel is described by a short line of parameters (floors, style, colour scheme, window
-layout, eyebrow type, canopy, patio, portholes, parapet) and built from it in code, so the forty
-hotels share a vocabulary without repeating one another. The palms are built the same way from
-trunk and crown definitions per species. Beyond the near blocks a far level of detail takes over
-for the hotels and the palms.
-
-### Beach and ocean
-
-The waves are on a schedule shared with the audio: each set of breakers is timed from the sound's
-clock, so the swash you see arriving at your feet is the swash you hear. Below the swash line the
-sand goes dark and reflective. The dry sand is baked with footprint-churned relief and its own
-shadows from the 7° sun, so the low light rakes across every footprint.
-
-![The park promenade, with a jogger and the café patios across the street](media/04-park-promenade.jpg)
-
-### Sound
-
-Nothing is recorded; everything is synthesized with the Web Audio API and placed in 3D with HRTF
-panning. The waves are a row of sources along the shore. The gulls call from birds you can see.
-The wind in the fronds follows how many palms are near. The car that passes is a car you can see,
-with its Doppler shift synced to its position. A generative bossa nova plays from one hotel patio
-and gets louder as you walk up to it. Footsteps change with the surface underfoot: pavement,
-grass, sand, wet sand, the wooden tower steps, and a splash in the swash. The bike and the ATV have
-their own freewheel and engine sounds.
-
-### The loader
-
-The page opens on a sunrise title card. Its progress bar is not a timer: each build stage reports
-how far it has got, so the bar tracks the actual build of the scene.
-
-![Riding the beach cruiser down the promenade](media/05-beach-cruiser.jpg)
-
-## Performance
-
-About 200 fps on an RTX 4060 at the 1024×576 test resolution, measured along the whole district.
-
-The quality tier is chosen on load (`src/quality.js`) from the GPU string, the WebGL limits, the
-CPU core count and the memory. `high` is the reference look for a desktop with a discrete GPU,
-`medium` is for integrated GPUs, laptops and tablets, and `low` is for phones. The tiers scale the
-pixel ratio, the shadow map (8192, 4096 or 2048 texels), MSAA or FXAA, bloom, the detail in the
-ocean and the sand, the far level of detail and the number of audio voices.
-
-On top of the tier, dynamic resolution steps the render scale down, to 0.6 at least, when frames
-run slow, and back up after a long calm stretch. A scale that had to be abandoned is not retried
-for a while, and for longer each time, so it never oscillates.
-
-## Limitations
-
-- **The critic never passed it.** The brief said to stop when a critic could find nothing that
-  looked fake, and that never happened. See below.
-- **Browsers.** Built and tested in Chromium (Chrome, Edge). Firefox and Safari are untested.
-- **Phones.** The `low` tier runs, but it is a reduced version of the scene: smaller shadow maps,
-  less detail in the sand and the ocean, fewer sounds.
-
-![Pelicans low over the water](media/06-pelicans.jpg)
-
-## How it was built
-
-It was built overnight in Cursor by AI agents, from the brief in [PROMPT.md](PROMPT.md). An
-orchestrator ran a long-running builder agent through each system in order, sky and lighting,
-hotels, palms, street and car, beach and ocean, then sound, walking and the full scene, with a
-separate sound agent working alongside. After each pass a fresh critic agent that had never read
-the code screenshotted five fixed cameras and compared them side by side with real sunrise
-photographs of Ocean Drive and Miami Beach, listing everything that looked fake. The builder
-fixed the list and the critic looked again.
-
-The rounds per system were: sky and lighting 6, hotels 3, palms 2, street and car 1, beach and
-ocean 1, and the full scene 3, the last of them against the live site.
-
-Honest version: the critic never gave a clean pass. In the later rounds it started contradicting
-its own earlier findings, so the physics of a low sun and the reference photographs were used as
-the tie-breakers rather than the latest list.
-
-The next day more agents extended it at the user's request: the loader, the quality tiers and
-touch controls, the people, the birds, the extended district, the bike and the ATV, and a round of
-fixes. The skills used were
-[cloudai-x/threejs-skills](https://github.com/cloudai-x/threejs-skills),
-[dgreenheck/webgpu-claude-skill](https://github.com/dgreenheck/webgpu-claude-skill),
-[majidmanzarpour/threejs-game-skills](https://github.com/majidmanzarpour/threejs-game-skills) and
-find-skills.
+- **The real map.** The street is still Ocean Drive's straight road with side streets from the
+  west. Building the real Causeway Bay layout (the bend of Hennessy Road, Yee Wo Street, the
+  blocks round Times Square) needs an OpenStreetMap export of the area.
+- **Cars.** They are Ocean Drive's models, so their steering wheels are on the left. Hong Kong
+  cars are right-hand drive.
+- **Sound, birds and music.** Some of Ocean Drive's ambience code is still in place (waves,
+  gulls and the bossa nova station). A city soundscape (crossing beeps, tram bells, the hum of
+  the street) is still to do.
+- **Fast travel.** `src/player/fasttravel.js` is Ocean Drive's and is not wired into the scene.
 
 ## Layout
 
 ```
 src/
-  main.js        boot, render loop, dynamic resolution, input
-  sky.js         sunrise sky, clouds, sun
-  quality.js     quality tiers
-  renderer/      post chain: bloom, anti-aliasing, grade
-  world/         layout, hotels, palms, street, cars (GLB), traffic, crowd (Mixamo), exiting
-                 drivers, beach, ocean, surf, birds, knockable props, world edges, lod
-  vehicles/      bike, ATV and cars: simulation, chase camera, skids, spray, dents
-  player/        walker (collisions, surfaces, jump) and touch controls
-  ui/            driving HUD, minimap, radio card
-  audio/         synthesis, spatial audio, waves, gulls, wind, car, music, radio, footsteps, vehicles
-  textures/      procedural noise
-blender/         the car models: Python build scripts and cars.blend
-public/models/   the car and people GLBs
-tools/           Playwright capture and test harnesses
+  main.js          boot, render loop, dynamic resolution, input
+  sky.js           sky, clouds, sun and its shadow box
+  quality.js       quality tiers
+  renderer/        post chain: bloom, anti-aliasing, grade
+  world/
+    hk-buildings.js  the Causeway Bay frontage: plan, facade shader, signs atlas, shops
+    hk-plates.js     Hong Kong number plates for the car models
+    ground.js        the city ground (heights for the walker, people and cars)
+    street.js        road, kerbs, sidewalks, markings, railings, lamps, signals, plates
+    layout.js        the street's dimensions, the cross streets and the sun
+    traffic*.js      keep-left traffic, taxis; cars-glb.js the Blender cars
+    crowd.js         the Mixamo crowd; mixamo.js the characters and clips
+  vehicles/        the bike and the cars: simulation, chase camera, skids, dents
+  player/          walker (first / third person, running), avatar, touch controls
+  ui/              driving HUD, minimap, radio card
+  audio/           synthesis, spatial audio, car, music, radio, footsteps
+blender/           the car models (Ocean Drive's): Python build scripts and cars.blend
+public/models/     the car and people GLBs
+tools/             Playwright capture and test harnesses (from Ocean Drive)
 ```
 
 ## Licence
 
-MIT. See [LICENSE](LICENSE).
+MIT. See [LICENSE](https://github.com/imsarah/HongKongThreejs/blob/claude/modest-fermi-witbgu/LICENSE). The original Ocean Drive copyright notice is kept, as the licence
+requires.
