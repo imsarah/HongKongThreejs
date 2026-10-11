@@ -7,7 +7,7 @@ Three.js and generated in code. Tong lau walk-ups with balconies and burglar gri
 residential towers with bay windows, older ribbon-window commercial blocks and glass office
 towers line both sides of the road. Their ground floors are shops under concrete canopies, with
 lit fascia signs in Chinese and English, and vertical neon signs hang out over the sidewalks.
-Red taxis and the rest of the traffic keep left, the crossings say 望右 LOOK RIGHT, and the
+Red taxis and the rest of the traffic keep left, the crossings are painted a warm yellow, and the
 crowd walks both sidewalks. You can walk it in first person, switch to third person and run,
 or take any car on the street and drive it.
 
@@ -138,8 +138,7 @@ The last car you got out of stays where you left it, across reloads (`localStora
   冰室, 找換, 牙科醫生 and so on), and boards and billboards sit on the facades and rooftops. All are
   drawn into one canvas atlas at load time.
 - **Street furniture and markings, Hong Kong style.**
-  - double white centre lines, double yellow no-stopping lines and zebra crossings;
-  - 望右 LOOK RIGHT painted at every crossing;
+  - double white centre lines, double yellow no-stopping lines and warm yellow zebra crossings;
   - galvanised guard railings along the kerbs, tall street lamps lit at dusk;
   - orange litter bins, red pillar hydrants, black traffic-light housings;
   - white street-name plates (Chinese over English), 停 STOP signs, metered-parking and
@@ -220,7 +219,7 @@ Mixamo crowd and open-world driving ([CHANGELOG.md](CHANGELOG.md) has its full h
   the ground-floor fascia below the upstairs windows, keeping the first residential floor
   clear. See [hk-buildings.js](src/world/hk-buildings.js).
 - **Hong Kong street furniture and markings.** The road has double white centre lines,
-  double yellow no-stopping kerb lines, zebra crossings and 望右 LOOK RIGHT markings. Guard
+  double yellow no-stopping kerb lines and warm yellow zebra crossings. Guard
   railings, tall street lamps, orange bins, red hydrants and black traffic-light housings
   replace the beachfront furniture. Street plates show Chinese above English: the main road
   is Hennessy Road, with Percival Street, Lee Garden Road, Pak Sha Road, Kai Chiu Road, Yun

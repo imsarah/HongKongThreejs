@@ -320,7 +320,7 @@ function markings() {
       idx.push(a, a + 1, d, d, a + 1, d + 1);
     }
   };
-  const YEL = 0xf2c418, WHT = 0xf0ede4;
+  const YEL = 0xf2c418, WHT = 0xf0ede4, CROSSING = 0xe8c65c;
   const cx = LANES.centerX;
   // Hong Kong: double white centre line (interrupted by the crosswalks and through the
   // intersections)
@@ -348,14 +348,14 @@ function markings() {
     quadH(stopX - 0.45, stopX, c.z - hw + GUTTER_W, c.z - 0.2, WHT, 0.9, 1, 6);
     if (c.far) continue;
     // continental crosswalk over the cross street, bars along its traffic
-    for (let z = c.z - hw + GUTTER_W + 1.0; z < c.z + hw - GUTTER_W - 1.3; z += 1.2) quadH(xw0 + 0.35, xw1 - 0.35, z, z + 0.6, WHT, 0.95, 4, 1);
-    quadH(xw0, xw0 + 0.3, c.z - hw + GUTTER_W, c.z + hw - GUTTER_W, WHT, 0.95, 1, 12);
-    quadH(xw1 - 0.3, xw1, c.z - hw + GUTTER_W, c.z + hw - GUTTER_W, WHT, 0.95, 1, 12);
+    for (let z = c.z - hw + GUTTER_W + 1.0; z < c.z + hw - GUTTER_W - 1.3; z += 1.2) quadH(xw0 + 0.35, xw1 - 0.35, z, z + 0.6, CROSSING, 0.95, 4, 1);
+    quadH(xw0, xw0 + 0.3, c.z - hw + GUTTER_W, c.z + hw - GUTTER_W, CROSSING, 0.95, 1, 12);
+    quadH(xw1 - 0.3, xw1, c.z - hw + GUTTER_W, c.z + hw - GUTTER_W, CROSSING, 0.95, 1, 12);
     // crosswalks over Ocean Drive on the north and south legs
     for (const [z0, z1] of crossLegs(c.z)) {
-      for (let x = PARKING.x0 + GUTTER_W + 1.0; x < LANES.x1 - GUTTER_W - 1.3; x += 1.2) quad(x, x + 0.6, z0 + 0.4, z1 - 0.4, WHT, 0.95);
-      quad(PARKING.x0 + GUTTER_W, LANES.x1 - GUTTER_W, z0, z0 + 0.3, WHT, 0.95, 16);
-      quad(PARKING.x0 + GUTTER_W, LANES.x1 - GUTTER_W, z1 - 0.3, z1, WHT, 0.95, 16);
+      for (let x = PARKING.x0 + GUTTER_W + 1.0; x < LANES.x1 - GUTTER_W - 1.3; x += 1.2) quad(x, x + 0.6, z0 + 0.4, z1 - 0.4, CROSSING, 0.95);
+      quad(PARKING.x0 + GUTTER_W, LANES.x1 - GUTTER_W, z0, z0 + 0.3, CROSSING, 0.95, 16);
+      quad(PARKING.x0 + GUTTER_W, LANES.x1 - GUTTER_W, z1 - 0.3, z1, CROSSING, 0.95, 16);
     }
     // stop bars on Ocean Drive's approaches (cars hold here for the crossing and the signal)
     {
@@ -366,9 +366,9 @@ function markings() {
     }
   }
   // zebra crossing: bars parallel to traffic, framed by two rails
-  for (let x = PARKING.x0 + GUTTER_W + 1.0; x < LANES.x1 - GUTTER_W - 1.3; x += 1.2) quad(x, x + 0.6, CW.z0 + 0.4, CW.z1 - 0.4, WHT, 0.95);
-  quad(PARKING.x0 + GUTTER_W, LANES.x1 - GUTTER_W, CW.z0, CW.z0 + 0.3, WHT, 0.95, 16);
-  quad(PARKING.x0 + GUTTER_W, LANES.x1 - GUTTER_W, CW.z1 - 0.3, CW.z1, WHT, 0.95, 16);
+  for (let x = PARKING.x0 + GUTTER_W + 1.0; x < LANES.x1 - GUTTER_W - 1.3; x += 1.2) quad(x, x + 0.6, CW.z0 + 0.4, CW.z1 - 0.4, CROSSING, 0.95);
+  quad(PARKING.x0 + GUTTER_W, LANES.x1 - GUTTER_W, CW.z0, CW.z0 + 0.3, CROSSING, 0.95, 16);
+  quad(PARKING.x0 + GUTTER_W, LANES.x1 - GUTTER_W, CW.z1 - 0.3, CW.z1, CROSSING, 0.95, 16);
   // stop bars
   quad(cx + 0.2, LANES.x1 - GUTTER_W, CW.z0 - 2.0, CW.z0 - 1.6, WHT, 0.9, 6);
   quad(PARKING.x1, cx - 0.2, CW.z1 + 1.6, CW.z1 + 2.0, WHT, 0.9, 6);
@@ -389,57 +389,6 @@ function markings() {
   };
   mat.customProgramCacheKey = () => 'street-paint-v2';
   const m = new THREE.Mesh(g, mat);
-  m.receiveShadow = true;
-  m.add(lookRight());
-  return m;
-}
-
-// "望右 LOOK RIGHT" painted on the road at the foot of every crossing (traffic keeps left,
-// so the nearest lane always comes from the right), readable from the kerb.
-function lookRight() {
-  const [cv, c] = canvas(1024, 256);
-  c.clearRect(0, 0, 1024, 256);
-  c.fillStyle = '#f2efe6';
-  c.textAlign = 'center';
-  c.textBaseline = 'middle';
-  c.font = `900 150px ${HK_FONT}`;
-  c.fillText('望右', 200, 132);
-  c.font = '900 120px Arial, Helvetica, sans-serif';
-  c.fillText('LOOK RIGHT', 650, 136);
-  // the arrow under the words points right
-  c.fillRect(380, 226, 520, 18);
-  c.beginPath(); c.moveTo(900, 206); c.lineTo(960, 235); c.lineTo(900, 264); c.closePath(); c.fill();
-  const map = tex(cv);
-  const pos = [], uv = [], idx = [];
-  // o: near kerb corner; u: along the reader's right; v: away from the reader
-  const decal = (o, u, v) => {
-    const b = pos.length / 3;
-    for (const [p, q] of [[0, 0], [1, 0], [1, 1], [0, 1]]) {
-      pos.push(o[0] + u[0] * p + v[0] * q, o[1], o[2] + u[2] * p + v[2] * q);
-      uv.push(p, q);
-    }
-    idx.push(b, b + 1, b + 2, b, b + 2, b + 3);
-  };
-  const W = 2.8, D = 0.7;
-  const legs = [[CW.z0, CW.z1], ...LEGS];
-  for (const [z0, z1] of legs) {
-    const zc = (z0 + z1) / 2;
-    const xw = PARKING.x0 + GUTTER_W + 0.15, xe = LANES.x1 - GUTTER_W - 0.15;
-    decal([xw, roadHeight(xw) + 0.008, zc - W / 2], [0, 0, W], [D, 0, 0]);
-    decal([xe, roadHeight(xe) + 0.008, zc + W / 2], [0, 0, -W], [-D, 0, 0]);
-  }
-  for (const cr of NEAR_CROSS) {
-    const xc = (CROSS.xw0 + CROSS.xw1) / 2, zn = cr.z - CROSS.hw + GUTTER_W + 0.15, zs = cr.z + CROSS.hw - GUTTER_W - 0.15;
-    const w = Math.min(W, CROSS.xw1 - CROSS.xw0 - 0.4);
-    decal([xc + w / 2, crossRoadHeight(xc, CROSS.hw) + 0.01, zn], [-w, 0, 0], [0, 0, D]);
-    decal([xc - w / 2, crossRoadHeight(xc, CROSS.hw) + 0.01, zs], [w, 0, 0], [0, 0, -D]);
-  }
-  const g = new THREE.BufferGeometry();
-  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
-  g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
-  g.setIndex(idx);
-  g.computeVertexNormals();
-  const m = new THREE.Mesh(g, new THREE.MeshStandardMaterial({ map, roughness: 0.75, alphaTest: 0.4, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 }));
   m.receiveShadow = true;
   return m;
 }
